@@ -1,0 +1,206 @@
+{
+  "_comment": "Weitere Flächen aus dem TUI-Videoguide, Version 1.3 vom 24. März 2026. Pixel- und Metermaße aus den angegebenen Seiten; Panelaufteilung und räumliche Positionen bleiben gesonderte Annahmen.",
+  "venues": [
+    {
+      "id": "agora",
+      "name": "Agora",
+      "fps": 30,
+      "walls": [
+        {
+          "id": "AG",
+          "label": "Agora",
+          "width": 1792,
+          "height": 960,
+          "widthM": 7,
+          "heightM": 3.75,
+          "panels": [
+            {
+              "id": "AG1",
+              "x": 0,
+              "width": 1792
+            }
+          ],
+          "centerSeamX": 896,
+          "safeAreaPct": 0.1,
+          "stage": {
+            "z": 0,
+            "floorOffsetM": 0,
+            "travelMaxM": 0,
+            "verified": false
+          }
+        }
+      ],
+      "assumptions": [
+        "Panelaufteilung unbekannt; als durchgehende Fläche dargestellt.",
+        "Bühnenposition und 10-%-Randzone sind Arbeitshilfen, keine bestätigten Hausvorgaben."
+      ],
+      "source": "TUI Videoguide Version 1.3, 24. März 2026, Seite 9"
+    },
+    {
+      "id": "la-cage",
+      "name": "La Cage",
+      "fps": 30,
+      "walls": [
+        {
+          "id": "LC",
+          "label": "La Cage",
+          "width": 1632,
+          "height": 864,
+          "widthM": 4.08,
+          "heightM": 2.16,
+          "panels": [
+            {
+              "id": "LC1",
+              "x": 0,
+              "width": 1632
+            }
+          ],
+          "centerSeamX": 816,
+          "safeAreaPct": 0.1,
+          "stage": {
+            "z": 0,
+            "floorOffsetM": 0,
+            "travelMaxM": 0,
+            "verified": false
+          }
+        }
+      ],
+      "assumptions": [
+        "Panelaufteilung unbekannt; als durchgehende Fläche dargestellt.",
+        "Bühnenposition und 10-%-Randzone sind Arbeitshilfen, keine bestätigten Hausvorgaben."
+      ],
+      "source": "TUI Videoguide Version 1.3, 24. März 2026, Seite 10"
+    },
+    {
+      "id": "blaue-flora",
+      "name": "Blaue Flora",
+      "fps": 30,
+      "walls": [
+        {
+          "id": "BF",
+          "label": "Blaue Flora",
+          "width": 2070,
+          "height": 1530,
+          "widthM": 6.6,
+          "heightM": 4.9,
+          "panels": [
+            {
+              "id": "BF1",
+              "x": 0,
+              "width": 2070
+            }
+          ],
+          "centerSeamX": 1035,
+          "safeAreaPct": 0.1,
+          "stage": {
+            "z": 0,
+            "floorOffsetM": 0,
+            "travelMaxM": 0,
+            "verified": false
+          },
+          "exportOverride": {
+            "width": 2070,
+            "height": 1532,
+            "reason": "Guide verlangt HAP-Export 2070×1532 statt nativ 2070×1530. Die Position zusätzlicher Pixel ist nicht vorgegeben; mit dem Haus abstimmen."
+          }
+        }
+      ],
+      "assumptions": [
+        "Panelaufteilung, Bühnenposition und 10-%-Randzone sind nicht bestätigt.",
+        "Die besondere HAP-Exporthöhe gilt für diese Fläche, nicht automatisch für andere Wände."
+      ],
+      "source": "TUI Videoguide Version 1.3, 24. März 2026, Seite 11"
+    },
+    {
+      "id": "multiplex-arena",
+      "name": "MultiPlex / Arena — Projektion",
+      "fps": 30,
+      "walls": [
+        {
+          "id": "MP",
+          "label": "MultiPlex Projektion",
+          "width": 1920,
+          "height": 1200,
+          "widthM": 7.65,
+          "heightM": 4.78,
+          "panels": [
+            {
+              "id": "MP1",
+              "x": 0,
+              "width": 1920
+            }
+          ],
+          "centerSeamX": 960,
+          "safeAreaPct": 0.1,
+          "stage": {
+            "z": 0,
+            "floorOffsetM": 0,
+            "travelMaxM": 0,
+            "verified": false
+          }
+        }
+      ],
+      "assumptions": [
+        "Projektion, kein LED: Pitch-Rechnung gilt nicht. Die Modellmaße 7,65×4,78 m sind weiterhin frei angenommen.",
+        "Der Guide nennt 7,90×6,00 m sowie mehrere Rasterangaben (1920×1200, alternativ 3840×2160 und 1920×1080). Ihre Zuordnung ist nicht eindeutig; vor einem verbindlichen Layout bestätigen lassen.",
+        "Panelaufteilung, Bühnenposition und Randzone sind nicht bestätigt."
+      ],
+      "source": "TUI Videoguide Version 1.3, 24. März 2026, Seite 12"
+    },
+    {
+      "id": "mein-schiff-bar",
+      "name": "Mein Schiff Bar — ScreenBand",
+      "fps": 30,
+      "walls": [
+        {
+          "id": "SB",
+          "label": "ScreenBand (4 Einzelscreens mit Lücken)",
+          "width": 4320,
+          "height": 1920,
+          "widthM": 5.4,
+          "heightM": 1.9,
+          "panels": [
+            {
+              "id": "SB1",
+              "x": 0,
+              "width": 1080
+            },
+            {
+              "id": "SB2",
+              "x": 1080,
+              "width": 1080
+            },
+            {
+              "id": "SB3",
+              "x": 2160,
+              "width": 1080
+            },
+            {
+              "id": "SB4",
+              "x": 3240,
+              "width": 1080
+            }
+          ],
+          "centerSeamX": 2160,
+          "safeAreaPct": 0.05,
+          "stage": {
+            "z": 0,
+            "floorOffsetM": 0,
+            "travelMaxM": 0,
+            "verified": false
+          },
+          "note": "WICHTIG: Vier physisch getrennte Screens mit Lücken dazwischen. Die Lücken müssen im Content FEHLEN — also nicht durchgehend komponieren, sondern die Zwischenräume mitdenken. Lückenbreite ist im PDF nicht beziffert."
+        }
+      ],
+      "delivery": {
+        "defaultPreset": "h264_review"
+      },
+      "assumptions": [
+        "Guide verlangt H.264 in MP4, nicht HAP.",
+        "5,4×1,9 m ist das Gesamtmaß einschließlich Zwischenräumen. Die schematische Vorschau modelliert die unbekannten Lückenbreiten nicht.",
+        "Panelaufteilung 4×1080 angenommen (4320/4); einzelne Screenmaße und Randzonen sind nicht bestätigt."
+      ],
+      "source": "TUI Videoguide Version 1.3, 24. März 2026, Seite 15"
+    }
+  ]
+}

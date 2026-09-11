@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# Theater-Bild-Geloete .gitignore
+#
+# GRUNDREGEL: Code und Projektdateien (.tbg.json) kommen ins Repo.
+# Videomaterial NICHT. Ein einziger D-Render ist 75 MB, ein 4-Minuten-Loop
+# ueber alle Waende kann viele Gigabyte umfassen. Medien bleiben ausserhalb von Git.
+# Details und Begruendung: docs/GITHUB.md
+# ---------------------------------------------------------------------------
+
+node_modules/
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# lokale ffmpeg-Binaries (werden per `npm run setup:ffmpeg` geholt)
+bin/*
+!bin/theater-bild-geloete.js
+vendor/ffmpeg*/
+.claude/
+
+# Arbeitsverzeichnisse des Tools
+.cache/
+proxies/
+thumbs/
+out/
+renders/
+tmp/
+
+# ---------------------------------------------------------------------------
+# Medien - niemals committen
+# ---------------------------------------------------------------------------
+*.mov
+*.mp4
+*.mxf
+*.avi
+*.webm
+*.mkv
+*.prores
+*.dpx
+*.exr
+*.psd
+*.tif
+*.tiff
+*.png
+*.jpg
+*.jpeg
+*.wav
+*.aif
+*.aiff
+*.ogg
+
+# Ausnahmen: kleine UI-Grafiken duerfen rein
+!client/assets/**/*.png
+!client/assets/**/*.svg
+!docs/img/*.png
+
+# ---------------------------------------------------------------------------
+# Kundenmaterial / Vertraulich
+# Der TUI-Videoguide und Kontaktdaten gehoeren nicht in ein Repo, auch nicht
+# in ein privates. Siehe docs/GITHUB.md, Abschnitt "Vertraulichkeit".
+# ---------------------------------------------------------------------------
+*.pdf
+.env
+.env.*
+secrets.json
+config/local.json
+
+# Fertige Pakete aus tools/build-portable.js
+dist/
+
+# Gebaute Browser-Fassung aus tools/build-web.js
+dist-web/

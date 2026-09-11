@@ -1,0 +1,474 @@
+{
+  "id": "mein-schiff-theater",
+  "name": "Mein Schiff Flow Theater",
+  "source": "TUIC Mein Schiff Videoguide MSR + MSN 20260303.pdf, Version 1.3, 24. März 2026, TUI Cruises Entertainment Technology; Wandabstände: Skizze Seite 8",
+  "fps": 30,
+  "pixelPitchMm": 4,
+  "engine": {
+    "led": "Absen N4PLUS + NovaStar H5 Videowall Controller",
+    "mediaserver": "Christie Pandoras Box V8, getriggert über grandMA2",
+    "holoProjector": "Epson ELB30000U (Gaze/Gauze im Portal)"
+  },
+  "walls": [
+    {
+      "id": "A",
+      "label": "A — downstage / front",
+      "width": 2592,
+      "height": 1512,
+      "widthM": 10.4,
+      "heightM": 6,
+      "panels": [
+        {
+          "id": "A1",
+          "x": 0,
+          "width": 648
+        },
+        {
+          "id": "A2",
+          "x": 648,
+          "width": 648
+        },
+        {
+          "id": "A3",
+          "x": 1296,
+          "width": 648
+        },
+        {
+          "id": "A4",
+          "x": 1944,
+          "width": 648
+        }
+      ],
+      "centerSeamX": 1296,
+      "safeAreaPct": 0.15,
+      "stage": {
+        "z": 0,
+        "floorOffsetM": 0,
+        "travelMaxM": 5.2,
+        "verified": false,
+        "source": "Relative Track-Abstände aus Skizze, Seite 8; Zahlen als Meter interpretiert, kein Hausaufmaß."
+      }
+    },
+    {
+      "id": "B",
+      "label": "B — midstage front",
+      "width": 1440,
+      "height": 1224,
+      "widthM": 5.76,
+      "heightM": 4.9,
+      "panels": [
+        {
+          "id": "B1",
+          "x": 0,
+          "width": 360
+        },
+        {
+          "id": "B2",
+          "x": 360,
+          "width": 360
+        },
+        {
+          "id": "B3",
+          "x": 720,
+          "width": 360
+        },
+        {
+          "id": "B4",
+          "x": 1080,
+          "width": 360
+        }
+      ],
+      "centerSeamX": 720,
+      "safeAreaPct": 0.15,
+      "stage": {
+        "z": 1.6,
+        "floorOffsetM": 0,
+        "travelMaxM": 2.88,
+        "verified": false,
+        "source": "Relative Track-Abstände aus Skizze, Seite 8; Zahlen als Meter interpretiert, kein Hausaufmaß."
+      }
+    },
+    {
+      "id": "C",
+      "label": "C — midstage back",
+      "width": 1440,
+      "height": 1224,
+      "widthM": 5.76,
+      "heightM": 4.9,
+      "panels": [
+        {
+          "id": "C1",
+          "x": 0,
+          "width": 360
+        },
+        {
+          "id": "C2",
+          "x": 360,
+          "width": 360
+        },
+        {
+          "id": "C3",
+          "x": 720,
+          "width": 360
+        },
+        {
+          "id": "C4",
+          "x": 1080,
+          "width": 360
+        }
+      ],
+      "centerSeamX": 720,
+      "safeAreaPct": 0.15,
+      "stage": {
+        "z": 4.3,
+        "floorOffsetM": 0,
+        "travelMaxM": 2.88,
+        "verified": false,
+        "source": "Relative Track-Abstände aus Skizze, Seite 8; Zahlen als Meter interpretiert, kein Hausaufmaß."
+      },
+      "note": "Pixelidentisch mit B. Verwechslungsgefahr bei Delivery — Dateiname entscheidet."
+    },
+    {
+      "id": "D",
+      "label": "D — upstage / Backwall",
+      "width": 2736,
+      "height": 1224,
+      "widthM": 10.9,
+      "heightM": 4.9,
+      "panels": [
+        {
+          "id": "D1",
+          "x": 0,
+          "width": 648,
+          "widthM": 2.58
+        },
+        {
+          "id": "D2",
+          "x": 648,
+          "width": 720,
+          "widthM": 2.87
+        },
+        {
+          "id": "D3",
+          "x": 1368,
+          "width": 720,
+          "widthM": 2.87
+        },
+        {
+          "id": "D4",
+          "x": 2088,
+          "width": 648,
+          "widthM": 2.58
+        }
+      ],
+      "centerSeamX": 1368,
+      "safeAreaPct": 0.15,
+      "stage": {
+        "z": 6.9,
+        "floorOffsetM": 0,
+        "travelMaxM": 5.45,
+        "verified": false,
+        "source": "Relative Track-Abstände aus Skizze, Seite 8; Zahlen als Meter interpretiert, kein Hausaufmaß."
+      },
+      "note": "Breite Rückwand mit zwei 648-px- und zwei 720-px-Panels."
+    }
+  ],
+  "holo": {
+    "id": "H",
+    "label": "Holo — Portal-Mitte, Gaze",
+    "width": 1920,
+    "height": 1200,
+    "alpha": true,
+    "stage": {
+      "z": -1.5,
+      "floorOffsetM": 0,
+      "widthM": 7.65,
+      "heightM": 4.78,
+      "verified": false
+    }
+  },
+  "camera": {
+    "presets": [
+      {
+        "id": "audience",
+        "label": "Zuschauer Mitte",
+        "pos": [
+          0,
+          1.2,
+          -12
+        ],
+        "target": [
+          0,
+          3,
+          3.5
+        ],
+        "fov": 40
+      },
+      {
+        "id": "frontrow",
+        "label": "Erste Reihe",
+        "pos": [
+          0,
+          1.2,
+          -5
+        ],
+        "target": [
+          0,
+          3,
+          3.5
+        ],
+        "fov": 55
+      },
+      {
+        "id": "balcony",
+        "label": "Rang",
+        "pos": [
+          0,
+          6.5,
+          -16
+        ],
+        "target": [
+          0,
+          2.5,
+          4
+        ],
+        "fov": 35
+      },
+      {
+        "id": "sideleft",
+        "label": "Seitenplatz links",
+        "pos": [
+          -8,
+          1.6,
+          -9
+        ],
+        "target": [
+          0,
+          3,
+          3.5
+        ],
+        "fov": 45
+      },
+      {
+        "id": "plan",
+        "label": "Draufsicht / Plan",
+        "pos": [
+          0,
+          22,
+          3.5
+        ],
+        "target": [
+          0,
+          0,
+          3.5
+        ],
+        "fov": 40
+      },
+      {
+        "id": "iso",
+        "label": "Isometrisch",
+        "pos": [
+          -11,
+          8,
+          -11
+        ],
+        "target": [
+          0,
+          2.5,
+          3.5
+        ],
+        "fov": 40
+      }
+    ],
+    "default": "audience"
+  },
+  "delivery": {
+    "namePattern": "{WALL}_{W}x{H}_{FPS}p_{CODEC}",
+    "presets": [
+      {
+        "id": "hap_q",
+        "label": "HAP Q — höhere Qualität",
+        "ext": "mov",
+        "codecTag": "HAP",
+        "args": [
+          "-c:v",
+          "hap",
+          "-format",
+          "hap_q",
+          "-chunks",
+          "4",
+          "-an"
+        ],
+        "bytesPerPixel": 1,
+        "alpha": false,
+        "note": "Die konkrete HAP-Variante ist mit dem Haus abzustimmen. HAP Q ist die Arbeitsvorgabe dieses Projekts."
+      },
+      {
+        "id": "hap",
+        "label": "HAP — Schiff (kleinere Datenrate)",
+        "ext": "mov",
+        "codecTag": "HAP",
+        "args": [
+          "-c:v",
+          "hap",
+          "-format",
+          "hap",
+          "-chunks",
+          "4",
+          "-an"
+        ],
+        "bytesPerPixel": 0.5,
+        "alpha": false
+      },
+      {
+        "id": "hap_alpha",
+        "label": "HAP Alpha — Schiff, mit Transparenz",
+        "ext": "mov",
+        "codecTag": "HAPAlpha",
+        "args": [
+          "-c:v",
+          "hap",
+          "-format",
+          "hap_alpha",
+          "-chunks",
+          "4",
+          "-an"
+        ],
+        "bytesPerPixel": 1,
+        "alpha": true
+      },
+      {
+        "id": "prores422",
+        "label": "ProRes 422 — Backup Berlin",
+        "ext": "mov",
+        "codecTag": "ProRes422",
+        "args": [
+          "-c:v",
+          "prores_ks",
+          "-profile:v",
+          "2",
+          "-pix_fmt",
+          "yuv422p10le",
+          "-an"
+        ],
+        "bytesPerPixel": 0.62,
+        "alpha": false
+      },
+      {
+        "id": "prores4444a",
+        "label": "ProRes 4444 Alpha — Backup Berlin, mit Transparenz",
+        "ext": "mov",
+        "codecTag": "ProRes4444Alpha",
+        "args": [
+          "-c:v",
+          "prores_ks",
+          "-profile:v",
+          "4",
+          "-pix_fmt",
+          "yuva444p10le",
+          "-alpha_bits",
+          "8",
+          "-an"
+        ],
+        "bytesPerPixel": 1.4,
+        "alpha": true
+      },
+      {
+        "id": "mpeg2",
+        "label": "MPEG-2 — Schiff (Alternative zu HAP)",
+        "ext": "mov",
+        "codecTag": "MPEG2",
+        "args": [
+          "-c:v",
+          "mpeg2video",
+          "-b:v",
+          "80M",
+          "-maxrate",
+          "80M",
+          "-bufsize",
+          "40M",
+          "-pix_fmt",
+          "yuv420p",
+          "-an"
+        ],
+        "bytesPerPixel": 0.33,
+        "alpha": false,
+        "note": "Datenrate vor Produktion mit Entertainment Technology abstimmen."
+      },
+      {
+        "id": "h264_review",
+        "label": "H.264 — Ansichtsexemplar / Freigabe",
+        "ext": "mp4",
+        "codecTag": "h264",
+        "args": [
+          "-c:v",
+          "libx264",
+          "-crf",
+          "20",
+          "-preset",
+          "medium",
+          "-pix_fmt",
+          "yuv420p",
+          "-movflags",
+          "+faststart",
+          "-an"
+        ],
+        "bytesPerPixel": 0.02,
+        "alpha": false
+      }
+    ],
+    "defaultPreset": "hap_q",
+    "proxy": {
+      "maxWidth": 1280,
+      "args": [
+        "-c:v",
+        "libx264",
+        "-crf",
+        "26",
+        "-preset",
+        "veryfast",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        "-an"
+      ]
+    }
+  },
+  "derived": {
+    "pixelsPerMeter": 250,
+    "note": "Nominal 250 Pixel pro Meter bei 4 mm Pitch. Die 3D-Wände verwenden die gerundeten Metermaße aus der Tabelle; Lieferdateien verwenden das exakte Pixelraster."
+  },
+  "assumptions": [
+    "Z-Abstände aus der bemaßten Skizze auf Seite 8: A→B 1,6, B→C 2,7, C→D 2,6. Als Meter interpretiert ergeben sich A=0, B=1,6, C=4,3, D=6,9 m; Einheit/Bezug vor Hausaufmaß bestätigen.",
+    "floorOffsetM = 0 für alle Wände angenommen (Unterkante auf Bühnenboden). A ist mit 6,00 m deutlich höher als B/C/D mit 4,90 m — falls A als Portalrahmen hängt, stimmt der Wert nicht.",
+    "travelMaxM = halbe Wandbreite angenommen (Wand fährt vollständig aus der Mitte). Die tatsächlich gefahrenen Öffnungspositionen der Show sind offen.",
+    "Holo-Gaze Position und Metermaß geschätzt; im PDF steht nur 1920x1200 und 'Portal-Mitte'.",
+    "Wand A: Tabelle nennt 6,00 m Höhe, aus 1512 px × 4 mm Pitch folgen aber 6,048 m. Die Metermaße im PDF sind gerundet. Für die 3D-Darstellung wird der Tabellenwert benutzt.",
+    "bytesPerPixel für ProRes sind Näherungen für die Speicherplatz-Abschätzung, keine garantierten Datenraten.",
+    "Der gesamte house-Block (Portaloeffnung 11,60 x 7,00 m, Buehne 24 x 11 m, Zuschauerraum bis 19 m Entfernung und 8,50 m seitlich) ist GESCHAETZT. Im Videoguide stehen nur die LED-Masse. Davon haengen in der 3D-Ansicht die Portaldarstellung und die Sichtgrenzen ab - also die Aussage, ab wann ein aufgefahrenes Panel fuer den Zuschauer verschwindet. Vor verbindlichen Aussagen von der Haustechnik bestaetigen lassen. Zu aendern in config/venues/mein-schiff-theater.json, Block house.",
+    "Die 15-%-Sperrzonen sind frei gewählte Kompositionshilfen dieser Software, keine belegte TUI-Vorgabe. HAP Q ist eine Arbeitsvorgabe; der Guide nennt HAP/MPEG-2 ohne konkrete HAP-Variante."
+  ],
+  "openQuestions": [
+    "HAP oder HAP Q bevorzugt? Gibt es eine maximale Datenrate / Dateigröße?",
+    "Welche Gesamtdatenrate erlaubt der Mediaserver für die gewählte HAP-Variante und alle gleichzeitig laufenden Wände?",
+    "Werden A–D framegenau gemeinsam gestartet (gemeinsamer Timecode), oder muss jede Fläche für sich sauber loopen?",
+    "Welche maximalen Öffnungspositionen werden für die konkrete Show gefahren?",
+    "Gilt für A/B/C/D eine Padding-Konvention analog zur Blauen Flora (HAP-Export 2 px höher als nativ)?",
+    "Gibt das Haus verbindliche Sicherheits- oder Letterbox-Zonen vor? Die aktuellen 15 % sind eine Arbeitshilfe."
+  ],
+  "house": {
+    "_comment": "Buehnen- und Zuschauergeometrie. Bestimmt Portal, Buehnenkante und die Sichtgrenzen in der 3D-Ansicht. NICHT im Videoguide enthalten - geschaetzt, bitte bestaetigen lassen.",
+    "prosceniumWidthM": 11.6,
+    "prosceniumHeightM": 7,
+    "prosceniumZ": -0.8,
+    "stageWidthM": 24,
+    "stageDepthM": 11,
+    "stageFrontZ": -1,
+    "audienceFrontZ": -3.5,
+    "audienceBackZ": -19,
+    "audienceHalfWidthM": 8.5,
+    "eyeHeightM": 1.15,
+    "verified": false
+  }
+}

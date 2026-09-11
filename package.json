@@ -1,0 +1,64 @@
+{
+  "name": "theater-bild-geloete",
+  "version": "0.2.0",
+  "description": "Local studio for multi-panel LED stage walls: conform footage, align frame rates, merge panels into one wall, preview the stage in 3D and deliver HAP/ProRes/MPEG-2 files. Runs offline, ffmpeg only, no cloud.",
+  "keywords": [
+    "led",
+    "led-wall",
+    "videowall",
+    "stage",
+    "theatre",
+    "ffmpeg",
+    "hap",
+    "prores",
+    "media-server",
+    "video",
+    "vjing",
+    "broadcast",
+    "delivery"
+  ],
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jareb560-byte/theater-bild-geloete.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jareb560-byte/theater-bild-geloete/issues"
+  },
+  "homepage": "https://github.com/jareb560-byte/theater-bild-geloete#readme",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "theater-bild-geloete": "bin/theater-bild-geloete.js",
+    "tbg": "bin/theater-bild-geloete.js"
+  },
+  "files": [
+    "bin/theater-bild-geloete.js",
+    "server/",
+    "client/",
+    "shared/",
+    "config/",
+    "tools/",
+    "docs/",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "start": "node bin/theater-bild-geloete.js",
+    "build": "node tools/build-web.js --strict",
+    "build:web": "node tools/build-web.js --strict",
+    "build:portable": "node tools/build-portable.js",
+    "dev": "node --watch server/index.js",
+    "doctor": "node server/cli/doctor.js",
+    "setup:ffmpeg": "node server/cli/install-ffmpeg.js",
+    "i18n:check": "node tools/i18n-check.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "three": "^0.166.1"
+  },
+  "displayName": "Theater-Bild-Gelöte"
+}

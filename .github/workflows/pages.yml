@@ -1,0 +1,83 @@
+# ---------------------------------------------------------------------------
+# Browser-Fassung bauen und auf GitHub Pages veroeffentlichen.
+#
+# Nur bei ausdruecklichem manuellen Start: GitHub baut dist-web/ und stellt
+# die Browser-Fassung ueber Pages bereit. Ein Quellcode-Push startet dies nicht.
+#
+# Damit das greift, muss in den Repository-Einstellungen einmalig
+#   Settings -> Pages -> Build and deployment -> Source = "GitHub Actions"
+# eingestellt sein, damit der Veroeffentlichungsjob Pages konfigurieren kann.
+# ---------------------------------------------------------------------------
+
+name: Browser-Fassung veroeffentlichen
+
+on:
+  # Das Quellcode-Repository ist privat. Pages bleibt bewusst manuell.
+  workflow_dispatch:
+
+# Rechte, die der Ablauf braucht. Bewusst so knapp wie moeglich:
+#   contents: read   -> Quelltext lesen
+#   pages: write     -> auf Pages veroeffentlichen
+#   id-token: write  -> sich gegenueber Pages ausweisen
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Laeuft immer nur ein Veroeffentlichungsvorgang gleichzeitig. Schiebt man zwei
+# Aenderungen kurz hintereinander, wartet die zweite statt sich zu ueberholen.
+# cancel-in-progress bleibt aus: eine halb veroeffentlichte Seite waere schlimmer
+# als eine, die eine Minute aelter ist.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  bauen:
+    name: Bauen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Quelltext holen
+        uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # npm ci ist der reproduzierbare Weg, braucht aber package-lock.json.
+      # Fehlt die Datei, faellt es auf npm install zurueck, statt abzubrechen.
+      - name: Abhaengigkeiten installieren
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            echo "Keine package-lock.json vorhanden — npm install statt npm ci."
+            npm install --no-audit --no-fund
+          fi
+
+      # --strict laesst den Lauf scheitern, wenn das Bauskript etwas bemaengelt.
+      # Ohne das wuerde eine kaputte Seite kommentarlos veroeffentlicht.
+      - name: Browser-Fassung bauen
+        run: npm run build:web -- --repo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+
+      - name: Pages vorbereiten
+        uses: actions/configure-pages@v5
+
+      - name: Ergebnis hochladen
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-web
+
+  veroeffentlichen:
+    name: Veroeffentlichen
+    needs: bauen
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Auf GitHub Pages legen
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,92 @@
+# ---------------------------------------------------------------------------
+# Fertige Pakete bauen und an eine GitHub-Release haengen.
+#
+# Ausgeloest durch eine Versionsmarke. Ablauf bei dir:
+#
+#   git tag v0.2.0
+#   git push origin v0.2.0
+#
+# Danach baut GitHub die vier Pakete und legt einen Release-Entwurf an.
+# Nach dem Prüfen lässt sich dieser Entwurf unter "Releases" veröffentlichen.
+#
+# Laeuft auf windows-latest, weil tools/build-portable.js zum Entpacken des
+# Windows-Node-Archivs PowerShell (Expand-Archive) benutzt.
+# ---------------------------------------------------------------------------
+
+name: Pakete veroeffentlichen
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Vorhandene Versionsmarke (z.B. v0.2.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write   # zum Anlegen der Release noetig
+
+jobs:
+  pakete:
+    name: Pakete bauen
+    runs-on: windows-latest
+    steps:
+      - name: Quelltext holen
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Versionsmarke pruefen
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || { echo "Ungueltige Versionsmarke"; exit 1; }
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+          node -e "if (process.env.RELEASE_TAG !== 'v' + require('./package.json').version) throw new Error('Tag und package.json-Version stimmen nicht ueberein')"
+
+      - name: Abhaengigkeiten installieren
+        shell: bash
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      # Laedt die Node-Laufzeiten fuer alle vier Zielsysteme von nodejs.org
+      # und schnuert daraus die Archive in dist/.
+      - name: Pakete bauen
+        run: npm run build:portable
+
+      - name: Ergebnis auflisten
+        shell: bash
+        run: ls -la dist/
+
+      # Ueber die GitHub-CLI, damit keine Fremdaktion noetig ist.
+      # Die Release traegt den Namen der Versionsmarke.
+      - name: Release anlegen und Pakete anhaengen
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" --verify-tag --draft \
+            --title "Theater-Bild-Geloete $RELEASE_TAG" \
+            --notes "Fertige Pakete. Entpacken und starten — Node und npm sind nicht noetig.
+
+          Windows: ZIP vor dem Entpacken per Rechtsklick -> Eigenschaften -> Zulassen freigeben, dann Theater-Bild-Geloete.cmd doppelklicken.
+          macOS:   Rechtsklick auf Theater-Bild-Geloete.command -> Oeffnen (beim ersten Mal).
+          Linux:   ./theater-bild-geloete.sh
+
+          ffmpeg ist nicht enthalten und wird beim ersten Start auf Wunsch geholt." \
+            dist/*.zip dist/*.tar.gz

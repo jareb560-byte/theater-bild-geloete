@@ -1,0 +1,29 @@
+name: Quelltext und Browser-Build pruefen
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: FFmpeg fuer Integrationstests installieren
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Regressionstests
+        run: npm test
+      - name: CLI-Einstieg pruefen
+        run: node bin/theater-bild-geloete.js --help
+      - name: Browser-Fassung bauen
+        run: npm run build:web
