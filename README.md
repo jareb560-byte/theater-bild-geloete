@@ -3,8 +3,12 @@
 *English version: [README.en.md](README.en.md)*
 
 Repository: [jareb560-byte/theater-bild-geloete](https://github.com/jareb560-byte/theater-bild-geloete)
-(privat, Zugriff nur für berechtigte GitHub-Konten). GitHub Pages ist nicht aktiviert;
-die Anwendung wird lokal gestartet. Ein npm-Paket ist nicht veröffentlicht.
+(privat, Zugriff nur für berechtigte GitHub-Konten).
+
+**[Online-Version öffnen](https://jareb560-byte.github.io/theater-bild-geloete/)** —
+3D-Bühne, Panel-Editor und Projektplanung ohne Installation. Die Schaltfläche **Anleitung**
+erklärt die ersten Schritte. Die Website ist öffentlich; das Quellcode-Repository bleibt privat.
+Rendern und Qualitätskontrolle laufen in der lokalen Anwendung. Ein npm-Paket ist nicht veröffentlicht.
 
 Wer eine LED-Wand bespielt, die aus mehreren beweglichen Teilen besteht, hat drei Probleme
 gleichzeitig: Der Inhalt muss geschlossen funktionieren **und** aufgefahren, wenn die Teile
@@ -44,8 +48,7 @@ Die **Desktop-Fassung** ist die vollständige. Sie entsteht mit `node tools/buil
 als je ein Archiv für Windows, macOS und Linux — ohne Installation, ohne Adminrechte.
 
 Die **Browser-Fassung** ist zum Planen und Herzeigen da: Adresse verschicken, fertig. Rendern
-kann sie nicht, weil dafür ffmpeg gebraucht wird — die Gründe (kein HAP-Encoder, rund
-zehnfache Rechenzeit, 2-GB-Speicherdecke) stehen in
+kann sie nicht, weil diese Fassung keinen ffmpeg-Renderdienst enthält. Die Unterschiede stehen in
 [docs/BROWSER-FASSUNG.md](docs/BROWSER-FASSUNG.md). Gebaut wird sie mit
 `node tools/build-web.js`, veröffentlicht über GitHub Pages.
 

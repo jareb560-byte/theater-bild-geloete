@@ -1298,7 +1298,6 @@ export function createStage3D({ canvas, videoPool, onPick, onPanelMove } = {}) {
   function getTexture(mediaId) {
     const cacheKey = mediaId;
     const existing = textureCache.get(cacheKey);
-    if (existing) return existing;
     let el;
     try {
       el = videoPool.acquire(mediaId);
@@ -1307,8 +1306,14 @@ export function createStage3D({ canvas, videoPool, onPick, onPanelMove } = {}) {
       return null;
     }
     if (!el) return null;
-    const tex = new THREE.VideoTexture(el);
-    tex.colorSpace = THREE.SRGBColorSpace;
+    if (existing?.image === el) return existing;
+    if (existing) existing.dispose();
+    const isImage = el.tagName === 'IMG';
+    const tex = isImage ? new THREE.Texture(el) : new THREE.VideoTexture(el);
+    // Both LED and floor shaders decode sRGB explicitly. Image textures must
+    // therefore keep their encoded values, as video textures already do.
+    tex.colorSpace = isImage ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+    if (isImage && videoPool.isReady(mediaId)) tex.needsUpdate = true;
     tex.minFilter = THREE.LinearFilter;
     tex.magFilter = THREE.LinearFilter;
     tex.generateMipmaps = false;
@@ -2213,6 +2218,9 @@ export function createStage3D({ canvas, videoPool, onPick, onPanelMove } = {}) {
   if (videoPool && typeof videoPool.onReady === 'function') {
     try {
       unsubscribeReady = videoPool.onReady(() => {
+        // A reselected folder can replace the source element while layer IDs
+        // stay unchanged. Rebind its texture on the next update/tick.
+        contentSig = '';
         for (const tex of textureCache.values()) tex.needsUpdate = true;
         markDirty();
       });

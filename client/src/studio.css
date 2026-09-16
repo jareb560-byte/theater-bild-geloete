@@ -135,3 +135,25 @@ body.viewport-full #main{grid-template-columns:minmax(0,1fr)}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 @media(max-width:900px){.stage-drawer-close{display:inline-block}}
 @media(max-width:640px){.walls-drawer-close{display:inline-block}}
+
+/* The guide stays visible beside the scrolling workspace navigation. */
+#quickStartButton{grid-column:4;grid-row:2;justify-self:end;align-self:center;z-index:1;color:var(--acc);background:#14191d;border:1px solid #415953}
+#viewSwitch{padding-right:390px}
+#venueName{padding-right:100px}
+.quick-start-dialog{width:720px;max-width:min(720px,94vw)}
+.quick-start{display:flex;flex-direction:column;gap:18px}
+.quick-start-intro h2{margin:5px 0 4px;font-size:24px;font-weight:600;letter-spacing:-.6px;line-height:1.2}
+.quick-start-intro p{margin:0;color:var(--dim)}
+.quick-start-steps{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;list-style:none;margin:0;padding:0}
+.quick-start-steps li{display:flex;align-items:flex-start;gap:11px}
+.quick-start-number{display:grid;place-items:center;flex:0 0 28px;height:28px;border:1px solid #45625d;border-radius:7px;color:var(--acc);font:600 12px var(--mono);background:#20322e}
+.quick-start h3{margin:2px 0 5px;font-size:14px;font-weight:600;color:var(--fg)}
+.quick-start p{margin:0;font-size:12px;line-height:1.6;color:#becbd2}
+.quick-start-delivery{border:1px solid #354a47;border-radius:8px;padding:13px 15px;background:#182623}
+.quick-start-delivery p+p{margin-top:7px}
+.quick-start .quick-start-note{font-size:11px;color:var(--dim)}
+.quick-start-tail{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:var(--dim)}
+.quick-start-dialog>.bd>.row{flex-wrap:wrap}
+@media(max-width:1150px){#viewSwitch{padding-right:100px}}
+@media(max-width:900px){#quickStartButton{grid-column:3}}
+@media(max-width:640px){#quickStartButton{font-size:11px;padding:5px 8px}#viewSwitch{padding-right:92px}.quick-start-steps{grid-template-columns:1fr;gap:14px}.quick-start-intro h2{font-size:21px}.quick-start-tail{align-items:flex-start;flex-direction:column;gap:4px}.quick-start-dialog>.bd{padding:15px}}

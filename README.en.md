@@ -1,8 +1,12 @@
 # Theater-Bild-Gelöte
 
 Repository: [jareb560-byte/theater-bild-geloete](https://github.com/jareb560-byte/theater-bild-geloete)
-(private; requires an authorized GitHub account). GitHub Pages is not enabled.
-Run the application locally. No npm package has been published.
+(private; requires an authorized GitHub account).
+
+**[Open the online edition](https://jareb560-byte.github.io/theater-bild-geloete/)** —
+3D stage, panel editor and project planning without installation. Use **Guide** for a quick start.
+The website is public; the source repository remains private. Rendering and quality control
+run in the local application. No npm package has been published.
 
 *Deutsche Fassung: [README.md](README.md)*
 

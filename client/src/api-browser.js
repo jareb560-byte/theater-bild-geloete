@@ -61,6 +61,10 @@ import {
 
 register('en', {
   'Projekt konnte nicht gespeichert werden': 'The project could not be saved',
+  'Projektdatei ist unvollständig oder beschädigt.': 'The project file is incomplete or damaged.',
+  'Mediendatei erneut auswählen': 'Select the media file again',
+  'Nach dem Neuladen die ursprünglichen Dateien oder denselben Medienordner erneut auswählen. Die Slot-Zuordnung bleibt erhalten.':
+    'After reloading, select the original files or the same media folder again. Slot assignments are preserved.',
   'Es wurde kein Venue übergeben.': 'No venue was passed in.',
   'Ohne Kennung kann kein Venue geladen werden.': 'A venue cannot be loaded without an id.',
   'Ohne Kennung kann kein Venue gespeichert werden.': 'A venue cannot be saved without an id.',
@@ -1047,6 +1051,13 @@ export function getProject() {
     // Genau wie beim Server ein Fehlschlag: main.js legt daraufhin ein neues an.
     return Promise.reject(fehler(t('Es ist kein Projekt gespeichert.'), { status: 404 }));
   }
+  // Blob URLs cannot survive a page reload. Report the actual availability,
+  // instead of displaying the persisted green "ready" flag for missing files.
+  if (Array.isArray(p.media)) p.media = p.media.map((media) => ({
+    ...media,
+    proxy: { ...media.proxy, path: null, ready: blobUrls.has(media.id) && media.proxy?.ready !== false },
+    thumb: { ...media.thumb, path: null, ready: thumbUrls.has(media.id) },
+  }));
   return Promise.resolve(p);
 }
 
@@ -1056,7 +1067,15 @@ export function putProject(project) {
   }
   const modifiedAt = new Date().toISOString();
   try {
-    lsSchreiben(LS_PROJECT, { ...project, modifiedAt });
+    const stored = klone({ ...project, modifiedAt });
+    // Persist metadata, never a session-specific blob URL masquerading as a
+    // portable path. Original desktop paths remain available for relinking.
+    for (const media of stored.media || []) {
+      for (const artifact of [media.proxy, media.thumb]) {
+        if (typeof artifact?.path === 'string' && artifact.path.startsWith('blob:')) artifact.path = null;
+      }
+    }
+    lsSchreiben(LS_PROJECT, stored);
   } catch (e) {
     return Promise.reject(e);
   }
@@ -1121,7 +1140,8 @@ function dateiUeberInput(accept) {
  * Der Parameter `path` aus der Desktop-Fassung wird ignoriert: Pfade gibt es
  * im Browser nicht, die Datei waehlt der Nutzer im Dialog.
  */
-export async function openProject(/* path */) {
+export async function openProject(path) {
+  if (path === `localStorage:${LS_PROJECT}`) return getProject();
   let datei = null;
 
   if (hatFsAccess()) {
@@ -1163,8 +1183,22 @@ export async function openProject(/* path */) {
   }
   // Abweichende VERSION ist kein Abbruch — validateProject() meldet das als Hinweis.
 
-  const { modifiedAt } = await putProject(daten);
-  return { ...daten, modifiedAt };
+  const object = (value) => value && typeof value === 'object' && !Array.isArray(value);
+  if (!istText(daten.venueId) || !Array.isArray(daten.media) || !object(daten.walls) ||
+      !Number.isFinite(daten.fps) || daten.fps <= 0 ||
+      !Number.isFinite(daten.loopSeconds) || daten.loopSeconds <= 0 ||
+      daten.media.some((media) => !object(media) || !istText(media.id)) ||
+      Object.values(daten.walls).some((wall) => !object(wall?.slots) ||
+        Object.values(wall.slots).some((slot) => !Array.isArray(slot?.layers) ||
+          slot.layers.some((layer) => !object(layer) || !istText(layer.id))))) {
+    throw fehler(t('Projektdatei ist unvollständig oder beschädigt.'));
+  }
+  // Validate the dependency before replacing the saved project. A missing
+  // custom venue must not strand the user in an unusable imported project.
+  await getVenue(daten.venueId);
+
+  await putProject(daten);
+  return getProject();
 }
 
 /**
@@ -1175,6 +1209,8 @@ export async function openProject(/* path */) {
  * die Arbeit im lokalen Speicher dieses einen Browsers liegen.
  */
 export async function saveProject(/* path */) {
+  const { isDirty, flushSave } = await import('./store.js');
+  if (isDirty() && !(await flushSave())) throw fehler(t('Projekt konnte nicht gespeichert werden'));
   const project = await getProject();
   const inhalt = `${JSON.stringify(project, null, 2)}\n`;
   const name = `${(project.name || 'projekt').replace(/[^\w\-. ]+/g, '_').trim() || 'projekt'}.tbg.json`;
@@ -1212,7 +1248,15 @@ export async function saveProject(/* path */) {
 export async function validateProject() {
   const project = await getProject();
   const venue = await getVenue(project.venueId);
-  return validateProjectModel(project, venue);
+  const issues = validateProjectModel(project, venue);
+  for (const media of project.media || []) {
+    if (!blobUrls.has(media.id)) issues.push({
+      level: 'warn', where: media.name || media.id,
+      msg: t('Mediendatei erneut auswählen'),
+      hint: t('Nach dem Neuladen die ursprünglichen Dateien oder denselben Medienordner erneut auswählen. Die Slot-Zuordnung bleibt erhalten.'),
+    });
+  }
+  return issues;
 }
 
 /* ==========================================================================
@@ -1434,14 +1478,44 @@ function sammleIssues(probe, kind, venue, unlesbar) {
 
 /* --- eine Datei analysieren ---------------------------------------------- */
 
+function mediaImportContext() {
+  const stored = lsLesen(LS_PROJECT, null);
+  return { known: Array.isArray(stored?.media) ? stored.media : [], claimed: new Set() };
+}
+
+function matchingMedia(file, pseudoPath, relativePath, context) {
+  const normalize = (path) => String(path || '').replaceAll('\\', '/').replace(/^\.\//, '');
+  const full = normalize(pseudoPath);
+  const relative = normalize(relativePath);
+  const available = context.known.filter((media) => media?.id && !context.claimed.has(media.id));
+  const unique = (items) => items.length === 1 ? items[0] : null;
+  // Preserve existing IDs first: layers from a desktop project reference
+  // random IDs, while a newly scanned browser file used to get a path hash.
+  const exact = available.filter((media) => normalize(media.browserPath || media.absPath) === full);
+  if (exact.length === 1) return exact[0];
+  const pathMatches = available.filter((media) =>
+    (full.includes('/') && normalize(media.absPath).endsWith(`/${full}`)) ||
+    (relative && normalize(media.relPath) === relative));
+  if (pathMatches.length === 1) return pathMatches[0];
+  // A file picker exposes no parent path. Name+size is a safe fallback only
+  // when exactly one unavailable item matches; never guess between duplicates.
+  return unique(available.filter((media) => !dateien.has(media.id) &&
+    (media.name || normalize(media.absPath).split('/').pop()) === file.name &&
+    Number(media.probe?.sizeBytes) > 0 && Number(media.probe.sizeBytes) === file.size));
+}
+
 /**
  * Aus einer Datei ein Media-Objekt nach makeMedia() bauen und probe{} so weit
  * fuellen, wie der Browser es hergibt. Was nicht messbar ist, bleibt leer und
  * steht in issues[] — geraten wird nichts.
  */
-async function analysiere(file, pseudoPfad, relPfad, venue) {
+async function analysiere(file, pseudoPfad, relPfad, venue, importContext = mediaImportContext()) {
   const kind = artFuer(file.name) || 'video';
-  const media = makeMedia(pseudoPfad, {
+  const existing = matchingMedia(file, pseudoPfad, relPfad, importContext);
+  const pathId = 'med_' + [...pseudoPfad].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36);
+  const usedId = importContext.claimed.has(pathId) || importContext.known.some((media) => media.id === pathId);
+  const media = makeMedia(existing?.absPath || pseudoPfad, {
+    ...existing,
     // STABILE ID aus dem Pfad, nicht gewuerfelt.
     //
     // store.mergeMedia() erkennt bereits bekannte Medien am Pfad und BEHAELT
@@ -1451,19 +1525,24 @@ async function analysiere(file, pseudoPfad, relPfad, venue) {
     // dauerhaft schwarz, und jede alte blob-URL haelt ihre Datei im Speicher
     // fest. Aus dem Pfad abgeleitet ist die ID ueber Seitenneuladen hinweg
     // dieselbe.
-    id: 'med_' + [...pseudoPfad].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36),
+    id: existing?.id || (usedId ? makeId('med') : pathId),
     name: file.name,
-    relPath: relPfad || null,
+    relPath: existing?.relPath || relPfad || null,
+    browserPath: pseudoPfad,
     kind,
     // Proxies entfallen: gespielt wird direkt aus der Originaldatei.
     proxy: { path: null, width: 0, height: 0, ready: true },
     thumb: { path: null, ready: false },
   });
+  importContext.claimed.add(media.id);
 
   // Alte blob-URL desselben Mediums freigeben, sonst leckt bei jedem
   // erneuten Einlesen eine URL samt festgehaltener Datei.
   const alt = blobUrls.get(media.id);
   if (alt) { try { URL.revokeObjectURL(alt); } catch { /* schon weg */ } }
+  thumbUrls.delete(media.id);
+  thumbLaeuft.delete(media.id);
+  thumbHinueber.delete(media.id);
   const url = URL.createObjectURL(file);
   blobUrls.set(media.id, url);
   dateien.set(media.id, file);
@@ -1480,11 +1559,12 @@ async function analysiere(file, pseudoPfad, relPfad, venue) {
       basis.width = masse.width;
       basis.height = masse.height;
       basis.frames = 1;
-      media.thumb = { path: url, ready: true };
+      media.thumb = { path: null, ready: true };
       thumbUrls.set(media.id, url);
     }
     media.probe = basis;
     media.issues = sammleIssues(basis, kind, venue, !masse);
+    if (!masse) media.proxy.ready = false;
     return media;
   }
 
@@ -1680,13 +1760,14 @@ export async function scanLibrary(roots, opts = true) {
     }
 
     const venue = await venueFuerPruefung();
+    const importContext = mediaImportContext();
     const media = [];
     for (let i = 0; i < gefunden.length; i += 1) {
       if (ctx.abgebrochen) break;
       const eintrag = gefunden[i];
       try {
         const file = await eintrag.handle.getFile();
-        const m = await analysiere(file, `${dirHandle.name}/${eintrag.rel}`, eintrag.rel, venue);
+        const m = await analysiere(file, `${dirHandle.name}/${eintrag.rel}`, eintrag.rel, venue, importContext);
         media.push(m);
         ctx.log(`${eintrag.rel} — ${m.probe?.width || '?'}x${m.probe?.height || '?'}`
           + `${m.probe?.fps ? ` · ${m.probe.fps} fps` : ''}`);
@@ -1734,12 +1815,13 @@ export async function addMedia(/* paths */) {
   }
 
   const venue = await venueFuerPruefung();
+  const importContext = mediaImportContext();
   const media = [];
   for (const h of handles) {
     try {
       const file = await h.getFile();
       if (!artFuer(file.name)) continue;
-      media.push(await analysiere(file, file.name, file.name, venue));
+      media.push(await analysiere(file, file.name, file.name, venue, importContext));
     } catch (e) {
       console.warn('[tbg-browser] Datei nicht lesbar:', e);
     }

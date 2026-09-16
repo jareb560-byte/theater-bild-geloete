@@ -1,7 +1,7 @@
 /**
  * Theater-Bild-Gelöte — Videopool.
  *
- * Haelt je Medium genau ein <video>-Element als Texturquelle. Die Elemente
+ * Haelt je Medium ein Video oder ein Browser-Bild als Texturquelle. Die Elemente
  * haengen NICHT im DOM; sie werden nur dekodiert und von three bzw. dem
  * Panel-Editor als Textur gelesen.
  *
@@ -33,7 +33,7 @@ register('en', {
 });
 import { proxyUrl } from '../api.js';
 
-export function createVideoPool() {
+export function createVideoPool({ sourceKind = () => 'video' } = {}) {
   /** mediaId -> { el, ready, errorReported, missingProxy } */
   const entries = new Map();
   const readyCallbacks = new Set();
@@ -115,14 +115,15 @@ export function createVideoPool() {
   function acquire(mediaId) {
     if (!mediaId) return null;
     const src = proxyUrl(mediaId);
+    const kind = sourceKind(mediaId) === 'image' ? 'image' : 'video';
     const found = entries.get(mediaId);
-    if (found && found.src === src) {
+    if (found && found.src === src && found.kind === kind) {
       retryMissingProxy(mediaId, found);
       return found.el;
     }
     if (found) release(mediaId); // neu erzeugter Proxy / erneut verknuepfte Datei
 
-    const el = document.createElement('video');
+    const el = document.createElement(kind === 'image' ? 'img' : 'video');
     el.crossOrigin = 'anonymous';
     el.muted = true;
     el.defaultMuted = true;
@@ -134,7 +135,7 @@ export function createVideoPool() {
     // Nicht ins DOM haengen — das Element ist reine Texturquelle.
     el.style.display = 'none';
 
-    const entry = { el, src, ready: false, errorReported: false, missingProxy: false, playPending: false, playBlocked: false, cleanup: null };
+    const entry = { el, src, kind, ready: false, errorReported: false, missingProxy: false, playPending: false, playBlocked: false, cleanup: null };
     entries.set(mediaId, entry);
 
     // In der Browser-Fassung liefert proxyUrl() null, wenn die Datei nicht
@@ -158,17 +159,19 @@ export function createVideoPool() {
       emitReady(mediaId, el);
     };
     const onError = () => { classifyError(mediaId, entry); };
+    el.addEventListener('load', onCanPlay);
     el.addEventListener('loadeddata', onCanPlay);
     el.addEventListener('canplay', onCanPlay);
     el.addEventListener('error', onError);
     entry.cleanup = () => {
+      el.removeEventListener('load', onCanPlay);
       el.removeEventListener('loadeddata', onCanPlay);
       el.removeEventListener('canplay', onCanPlay);
       el.removeEventListener('error', onError);
     };
 
     el.src = src;
-    try { el.load(); } catch (e) { emitError({ mediaId, kind: 'load', message: t('Proxy konnte nicht geladen werden: {msg}', { msg: e.message }) }); }
+    try { el.load?.(); } catch (e) { emitError({ mediaId, kind: 'load', message: t('Proxy konnte nicht geladen werden: {msg}', { msg: e.message }) }); }
     return el;
   }
 
@@ -178,9 +181,9 @@ export function createVideoPool() {
     entries.delete(mediaId);
     entry.cleanup?.();
     try {
-      entry.el.pause();
+      entry.el.pause?.();
       entry.el.removeAttribute('src');
-      entry.el.load();
+      entry.el.load?.();
     } catch (e) {
       console.warn('[videoPool] Freigeben fehlgeschlagen:', e);
     }
@@ -247,7 +250,7 @@ export function createVideoPool() {
     const chosen = new Map();
     for (const layer of layers) {
       const entry = entries.get(layer.mediaId);
-      if (!entry || !entry.ready) continue;
+      if (!entry || !entry.ready || entry.kind === 'image') continue;
       const position = positionFor(layer, entry.el, timeSec);
       if (!chosen.has(layer.mediaId) || (!chosen.get(layer.mediaId).active && position.active)) {
         chosen.set(layer.mediaId, position);
@@ -277,7 +280,7 @@ export function createVideoPool() {
 
     // Elemente ohne Layer stillstellen.
     for (const [mediaId, entry] of entries) {
-      if (seen.has(mediaId) || entry.el.paused) continue;
+      if (entry.kind === 'image' || seen.has(mediaId) || entry.el.paused) continue;
       entry.el.pause();
     }
   }
@@ -306,7 +309,7 @@ export function createVideoPool() {
   function pause() {
     playing = false;
     for (const entry of entries.values()) {
-      if (!entry.el.paused) entry.el.pause();
+      if (entry.kind !== 'image' && !entry.el.paused) entry.el.pause();
     }
   }
 
@@ -317,7 +320,9 @@ export function createVideoPool() {
 
   function isReady(mediaId) {
     const entry = entries.get(mediaId);
-    return !!entry && entry.el.readyState >= 2;
+    return !!entry && (entry.kind === 'image'
+      ? entry.ready && entry.el.complete && entry.el.naturalWidth > 0
+      : entry.el.readyState >= 2);
   }
 
   function all() {

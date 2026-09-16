@@ -382,6 +382,7 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
     let h = num(media?.probe?.height, 0);
     if (w > 0 && h > 0) return { w, h };
     const el = tryAcquire(layer.mediaId);
+    if (el && el.naturalWidth > 0) return { w: el.naturalWidth, h: el.naturalHeight };
     if (el && el.videoWidth > 0) return { w: el.videoWidth, h: el.videoHeight };
     return { w: 0, h: 0 };
   }

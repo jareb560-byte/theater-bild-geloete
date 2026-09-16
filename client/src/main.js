@@ -13,7 +13,7 @@
 import { h, on, clear, timecode, num, closeTopModal, modal } from './dom.js';
 import {
   getHealth, getVenue, getProject, newProject, connectJobStream, makeProxies, validateProject,
-  getWorkspace, listVenues,
+  getWorkspace, listVenues, openProject,
 } from './api.js';
 import {
   store, setStatus, showError, updateWall, updateSlot, updateProject, updateLayer,
@@ -27,6 +27,7 @@ import { createLibraryView } from './ui/library.js';
 import { createInspector } from './ui/inspector.js';
 import { createJobsBar } from './ui/jobs.js';
 import { createStageControls } from './ui/stageControls.js';
+import { createQuickStart } from './ui/quickStart.js';
 import { createRenderView } from './ui/render.js';
 import { createQcView } from './ui/qc.js';
 import { createSetupView, ffmpegLevel, ffmpegSummary } from './ui/setup.js';
@@ -35,6 +36,15 @@ import { getWallSpec } from '/shared/model.js';
 /* Woerterbuch dieses Moduls — inklusive der statischen Texte aus index.html,
    denn die gehoeren zum Rahmen und haben kein eigenes Modul. */
 register('en', {
+  'Anleitung': 'Guide',
+  'Kurzanleitung öffnen': 'Open quick-start guide',
+  'Projektdatei öffnen': 'Open project file',
+  'Neues Browser-Projekt': 'New browser project',
+  'Der aktuelle Stand bleibt nur bis zum nächsten Projektwechsel im Browser. Sichere ihn bei Bedarf vorher als Projektdatei.':
+    'The current plan stays in this browser until you switch projects. Download a project file first if you need to keep it.',
+  'Projekt geladen. Medienordner bei Bedarf erneut einlesen.': 'Project loaded. Scan the media folder again if needed.',
+  'Browser bereit. Die Lieferdateien entstehen in der Desktop-Fassung.': 'Browser ready. Delivery files are created in the desktop edition.',
+  'Browser · Planung': 'Browser · Planning',
   'Wandliste schließen': 'Close wall list',
   'Projekt verwalten': 'Manage project',
   'Projektdatei herunterladen': 'Download project file',
@@ -181,6 +191,7 @@ register('en', {
  * Einstiegsassistent und laesst den Nutzer eines anlegen.
  */
 const DEFAULT_VENUE = 'mein-schiff-theater';
+const IS_BROWSER = window.__TBG_MODE === 'browser';
 
 /**
  * Venue, mit dem ein NEUES Projekt startet.
@@ -229,7 +240,11 @@ const VIEWS = {
  * Bausteine
  * ========================================================================== */
 
-const pool = createVideoPool();
+const pool = createVideoPool({
+  sourceKind: (id) => document.documentElement.dataset.mode === 'browser'
+    && store.get().media.find((media) => media.id === id)?.kind === 'image'
+    ? 'image' : 'video',
+});
 const library = createLibraryView();
 const inspector = createInspector();
 const jobsBar = createJobsBar();
@@ -244,6 +259,7 @@ let onboarding = null;   // ui/onboarding.js, wird nachgeladen
 let clock = 0;           // Zeitleistenposition in Sekunden
 let statusAction = null; // zusaetzlicher Knopf in der Statuszeile
 let helpHandle = null;   // offener Hilfe-Dialog
+const quickStart = createQuickStart({ browser: IS_BROWSER, onView: setView, onShortcuts: openHelp });
 
 VIEWS.library.appendChild(library.el);
 VIEWS.render.appendChild(renderView.el);
@@ -358,9 +374,44 @@ on($('projectMenu'), 'click', () => modal({
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } },
-    { label: t('Projekt öffnen oder anlegen'), onClick: () => onboarding?.open() },
+    ...(IS_BROWSER ? [
+      { label: t('Projektdatei öffnen'), onClick: async () => {
+        try {
+          if (isDirty() && !(await flushSave())) throw new Error(t('Projekt konnte nicht gespeichert werden'));
+          await useBrowserProject(await openProject());
+        }
+        catch (e) { if (!e.abgebrochen && e.name !== 'AbortError') throw e; }
+      } },
+      { label: t('Neues Browser-Projekt'), onClick: () => openNewBrowserProject() },
+    ] : [{ label: t('Projekt öffnen oder anlegen'), onClick: () => onboarding?.open() }]),
   ],
 }));
+
+async function useBrowserProject(project) {
+  const venue = await getVenue(project.venueId);
+  pool.pause();
+  clock = 0;
+  store.set({
+    project, venue, media: project.media || [],
+    ui: { activeWallId: venue.walls[0]?.id, activeSlotId: 'master', selectedLayerId: null,
+      transport: { playing: false, timeSec: 0, loopSec: project.loopSeconds || 20 } },
+  });
+  setStatus(t('Projekt geladen. Medienordner bei Bedarf erneut einlesen.'), 'ok');
+}
+
+function openNewBrowserProject() {
+  const name = h('input', { type: 'text', value: t('Neues Projekt'), 'aria-label': t('Projektname') });
+  modal({
+    title: t('Neues Browser-Projekt'),
+    body: h('div.col', h('p', t('Der aktuelle Stand bleibt nur bis zum nächsten Projektwechsel im Browser. Sichere ihn bei Bedarf vorher als Projektdatei.')), name),
+    actions: [{ label: t('Neues Projekt'), kind: 'primary', onClick: async () => {
+      if (isDirty() && !(await flushSave())) throw new Error(t('Projekt konnte nicht gespeichert werden'));
+      await useBrowserProject(await newProject(store.get().venue?.id || startVenueId(), name.value.trim() || t('Neues Projekt')));
+    } }],
+  });
+}
+
+on($('quickStartButton'), 'click', () => quickStart.open());
 
 on(elBtnPlay, 'click', () => togglePlay());
 
@@ -377,7 +428,7 @@ on(elLoop, 'change', () => {
   store.set({ ui: { transport: { loopSec: v } } });
 });
 
-on($('ffmpegAmp'), 'click', () => setup.open());
+on($('ffmpegAmp'), 'click', () => IS_BROWSER ? quickStart.open() : setup.open());
 
 for (const b of $('viewSwitch').children) {
   on(b, 'click', () => setView(b.dataset.view));
@@ -647,9 +698,10 @@ function render(state) {
   elBtnPlay.classList.toggle('on', state.ui.transport.playing);
 
   // ffmpeg-Ampel
-  const lvl = ffmpegLevel(state.health);
+  const lvl = IS_BROWSER ? 'ok' : ffmpegLevel(state.health);
   elFfmpegDot.className = `amp ${lvl}`;
-  elFfmpegTxt.textContent = ffmpegSummary(state.health);
+  elFfmpegTxt.textContent = IS_BROWSER ? t('Browser · Planung') : ffmpegSummary(state.health);
+  if (IS_BROWSER) $('ffmpegAmp').title = t('Kurzanleitung öffnen');
   elFfmpegTxt.style.color = lvl === 'err' ? 'var(--err)' : '';
 
   // Statuszeile
@@ -794,6 +846,7 @@ function openHelp() {
 
 on(window, 'keydown', (ev) => {
   if (ev.key === 'Escape') { if (closeTopModal()) ev.preventDefault(); return; }
+  if ($('overlayRoot')?.classList.contains('on')) return;
 
   if (ev.ctrlKey && (ev.key === 's' || ev.key === 'S')) {
     ev.preventDefault();
@@ -1025,14 +1078,14 @@ async function boot() {
   await loadViewports();
 
   // --- ffmpeg pruefen
-  if (ffmpegLevel(store.get().health) === 'err') {
+  if (!IS_BROWSER && ffmpegLevel(store.get().health) === 'err') {
     // Auch hier eine Statusmeldung setzen. Sonst bleibt "Verbinde mit dem
     // Server …" vom Anfang von boot() stehen und behauptet einen Fehler,
     // den es nicht gibt — der Server laeuft ja, nur ffmpeg fehlt.
     setStatus(t('Server verbunden. ffmpeg fehlt — ohne das kann nichts umgewandelt oder gerendert werden.'), 'err');
     setup.open();
   } else {
-    setStatus(t('Bereit.'), 'ok');
+    setStatus(IS_BROWSER ? t('Browser bereit. Die Lieferdateien entstehen in der Desktop-Fassung.') : t('Bereit.'), 'ok');
   }
 
   // --- Projekt pruefen
@@ -1059,7 +1112,9 @@ async function boot() {
   }
 
   // --- Einstiegsassistent
-  if (onboarding && typeof onboarding.shouldShow === 'function') {
+  if (IS_BROWSER) {
+    quickStart.showOnFirstVisit();
+  } else if (onboarding && typeof onboarding.shouldShow === 'function') {
     let show = false;
     try {
       show = !!onboarding.shouldShow(store.get());
@@ -1259,6 +1314,7 @@ async function loadViewports() {
   }
 
   // Einstiegsassistent
+  if (IS_BROWSER) return;
   try {
     const mod = await import('./ui/onboarding.js');
     onboarding = mod.createOnboarding({

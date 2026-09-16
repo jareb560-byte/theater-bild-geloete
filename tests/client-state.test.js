@@ -109,6 +109,41 @@ async function videoPool() {
   return { pool: module.createVideoPool(), videos, urls, fixture };
 }
 
+test('browser images become ready without video playback and reload when their source changes', async () => {
+  class FakeImage extends EventTarget {
+    constructor() { super(); Object.assign(this, { style: {}, complete: false, naturalWidth: 0 }); }
+    removeAttribute(name) { delete this[name]; }
+    ready() { this.complete = true; this.naturalWidth = 640; this.dispatchEvent(new Event('load')); }
+  }
+  const urls = new Map([['image', 'blob:first-image']]);
+  const { module } = await loadClient('../client/src/media/videoPool.js', {
+    urls,
+    document: { createElement(tag) { assert.equal(tag, 'img'); return new FakeImage(); } },
+  });
+  const pool = module.createVideoPool({ sourceKind: () => 'image' });
+  const ready = [];
+  pool.onReady((id) => ready.push(id));
+  pool.setLayerSource(() => [{ mediaId: 'image', time: { startSec: 0, loop: true } }]);
+  const first = pool.acquire('image');
+  assert.equal(pool.isReady('image'), false);
+  first.ready();
+  assert.equal(pool.isReady('image'), true);
+  pool.play();
+  pool.seek(7);
+  pool.pause();
+  assert.equal('currentTime' in first, false, 'images must never be treated as a video timeline');
+  urls.set('image', 'blob:replacement-image');
+  const second = pool.acquire('image');
+  assert.notEqual(second, first);
+  assert.equal(first.src, undefined, 'the old image source is released');
+  first.ready();
+  assert.deepEqual(ready, ['image'], 'late events from a released image are ignored');
+  second.ready();
+  assert.deepEqual(ready, ['image', 'image']);
+  pool.dispose();
+  assert.equal(second.src, undefined);
+});
+
 test('looping media stays paused before its layer start and unreferenced media stays paused', async () => {
   const { pool } = await videoPool();
   pool.setLayerSource(() => [{ mediaId: 'media', time: { startSec: 5, loop: true } }]);

@@ -2,7 +2,10 @@
 
 Theater-Bild-Gelöte gibt es zweimal. Die **Desktop-Fassung** wird entpackt und gestartet und kann
 alles. Die **Browser-Fassung** liegt als Adresse im Netz, braucht keine Installation und kann
-alles außer Rendern.
+3D-Bühne, Panel-Editor, Venue-Verwaltung und Projektplanung.
+
+**[Online-Version öffnen](https://jareb560-byte.github.io/theater-bild-geloete/)**.
+Die Schaltfläche **Anleitung** erklärt die Bedienung in wenigen Schritten.
 
 Beide benutzen denselben Quelltext. Der Unterschied ist eine einzige Datei: statt mit einem
 lokalen Server zu reden, arbeitet die Browser-Fassung gegen den Speicher des Browsers und die
@@ -37,20 +40,12 @@ Nicht dafür da ist sie, die Lieferdateien zu erzeugen. Das bleibt am Desktop.
 | Rendern und Ausliefern | ja | nein |
 | Qualitätskontrolle | ja | nein |
 
-### Warum Rendern im Browser nicht geht
+### Rendern in der lokalen Fassung
 
-Nicht aus Bequemlichkeit — es sind drei harte Gründe:
-
-**HAP fehlt.** ffmpeg gibt es als WebAssembly, aber die fertigen Bauten enthalten den
-`hap`-Encoder nicht. Ohne den ist eine Auslieferung ans Schiff unmöglich.
-
-**Zehnfache Rechenzeit.** Gemessen: 90 Frames Wand D als HAP Q brauchen nativ 3,5 Sekunden.
-WebAssembly ist grob zehnmal langsamer. Ein 2-Minuten-Loop hat aber nicht 90 Frames, sondern
-**3.600** — mal vier Wände. Aus einem Nachmittag würden Tage.
-
-**Speicherdecke.** WebAssembly ist 32-bittig, praktisch ist bei rund 2 GB Schluss. Die
-HAP-Datei für 3 Sekunden Wand D ist schon 250 MB, der 4-Minuten-Loop über alle Wände 55 GB.
-Das passt nirgends hinein.
+Diese Browser-Fassung enthält keinen ffmpeg-Encoder und keinen Renderdienst. Conform,
+Lieferdateien und die technische Qualitätskontrolle nutzen deshalb weiterhin ffmpeg auf
+dem eigenen Rechner. GitHub Pages stellt die Oberfläche bereit; die Verarbeitung der
+Projektplanung findet im Browser statt.
 
 ---
 
@@ -91,8 +86,10 @@ oft, weil Auflösung und Länge trotzdem angezeigt werden.
 
 Der Quellcode liegt im privaten Repository
 [jareb560-byte/theater-bild-geloete](https://github.com/jareb560-byte/theater-bild-geloete).
-GitHub Pages ist nicht aktiviert. Ein Push führt die Prüfungen aus und veröffentlicht keine
-Website. Die folgenden Schritte gelten nur für eine gesondert beschlossene Pages-Bereitstellung.
+Die öffentliche Browser-Version wird über GitHub Pages bereitgestellt:
+[Theater-Bild-Gelöte online](https://jareb560-byte.github.io/theater-bild-geloete/).
+Ein normaler Push führt die Prüfungen aus. Die Veröffentlichung einer neuen Browser-Fassung
+wird separat gestartet.
 
 Einmalig einrichten:
 
@@ -126,22 +123,17 @@ Ein npm-Paket wird von keinem der Workflows veröffentlicht.
 
 ---
 
-## Vertraulichkeit — bitte lesen
+## Was öffentlich ist
 
-Das mitgelieferte Venue `mein-schiff-theater` enthält Kundenangaben: den Auftraggeber, den Namen
-des Ansprechpartners und die Quellenangabe des Videoguides. **GitHub Pages ist öffentlich,
-sobald das Repository öffentlich ist** — und eine veröffentlichte Seite lässt sich auch dann
-noch über Zwischenspeicher finden, wenn du sie später zurückziehst.
+Die Website und die für ihre Funktion nötigen Browserdateien sind öffentlich abrufbar.
+Das private GitHub-Repository ist dadurch nicht öffentlich. Ein privates Repository bedeutet
+keinen Zugangsschutz für diese Pages-Website.
 
-Zwei saubere Wege:
-
-- **Repository privat lassen.** Pages funktioniert dann nur mit einem kostenpflichtigen Tarif
-  und ist auf eingeladene Personen beschränkt. Für den Kollegenkreis der richtige Weg.
-- **Vor der Veröffentlichung anonymisieren.** Ein neutrales Beispiel-Venue mit denselben Maßen,
-  aber ohne Namen und Quellenangabe, mitliefern und das echte lokal im Arbeitsverzeichnis
-  halten. Eigene Venues liegen ohnehin dort und nicht im Repository.
-
-Solange das nicht entschieden ist: Repository privat.
+Veröffentlicht werden die Anwendung und die mitgelieferten Bühnenvorlagen. Produktionsbilder,
+Videos, lokale Projekte und der TUI-PDF-Guide gehören nicht zum Website-Paket.
+Ausgewähltes eigenes Material wird im Browser verarbeitet und nicht zu GitHub hochgeladen.
+Eigene Projekte liegen im Browserspeicher; für eine dauerhafte Sicherung als `.tbg.json`
+herunterladen. Die Projektdatei enthält die Anordnung und Medienverweise, nicht die Medien selbst.
 
 ---
 

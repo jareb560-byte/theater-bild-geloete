@@ -41,6 +41,11 @@ const ROOT = path.resolve(HERE, '..');
 // wird getrennt gezaehlt, weil es ein anderer Pfad ist.
 const EXPECTED_ABS_IMPORTS = 9;
 
+// Nur gepruefte Vorlagen und ausdruecklich freigegebene statische Assets
+// veroeffentlichen. Produktionsmaterial und eigene Venues bleiben lokal.
+const PUBLIC_VENUES = ['mein-schiff-theater.json', 'weitere-venues.json'];
+const PUBLIC_ASSETS = [];
+
 /* ==========================================================================
  * Protokoll
  * ========================================================================== */
@@ -91,7 +96,7 @@ function usage() {
   say('  --out   Zielordner, relativ zur Projektwurzel (Standard: dist-web)');
   say('  --base  Unterpfad auf GitHub Pages. Wird nur fuer 404.html gebraucht,');
   say('          alles andere ist relativ verlinkt.');
-  say('  --repo  Adresse des Repos fuer den Link auf die Releases-Seite.');
+  say('  --repo  Repo-Adresse zur Ableitung des Pages-Unterpfads.');
   say('          Standard: package.json → repository.url');
 }
 
@@ -174,6 +179,24 @@ function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Private Kontakt- und Pfadangaben gehoeren nicht in oeffentliche Vorlagen. */
+function publicVenueData(value) {
+  if (Array.isArray(value)) return value.map(publicVenueData);
+  if (value && typeof value === 'object') {
+    const result = {};
+    for (const [key, child] of Object.entries(value)) {
+      if (/^(?:contacts?|contactPerson|contactName|contactEmail|ansprechpartner|kontakt|kontakte|email|e-mail|phone|telephone|telefon|mobile|author|createdBy|modifiedBy|owner|absPath|localPath|filePath)$/i.test(key)) continue;
+      result[key] = publicVenueData(child);
+    }
+    return result;
+  }
+  if (typeof value === 'string' && (
+    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(value) ||
+    /(?:^|[\s(])(?:[A-Z]:[\\/]|file:\/\/|\/(?:Users|home)\/)/i.test(value)
+  )) return '[Private Kontakt- oder Pfadangabe entfernt]';
+  return value;
+}
+
 /* ==========================================================================
  * Bauen
  * ========================================================================== */
@@ -190,9 +213,15 @@ const OUT = path.isAbsolute(args.out) ? path.resolve(args.out) : path.resolve(RO
 if (OUT === ROOT || ROOT.startsWith(OUT + path.sep)) {
   fail(`Der Zielordner ${OUT} enthaelt das Projekt selbst.`, 'Bitte einen eigenen Ordner angeben, etwa --out dist-web');
 }
+for (const protectedName of ['client', 'server', 'shared', 'config', 'tools', 'docs', 'node_modules', '.git', '.github', 'bin']) {
+  const protectedPath = path.join(ROOT, protectedName).toLowerCase();
+  const target = OUT.toLowerCase();
+  if (target === protectedPath || target.startsWith(protectedPath + path.sep)) {
+    fail(`Der Zielordner liegt in einem Quell-/Programmordner: ${OUT}`, 'Bitte --out dist-web oder einen separaten Ausgabeordner verwenden.');
+  }
+}
 
 const REPO = repoWebUrl(pkg, args.repo);
-const RELEASES = REPO ? `${REPO}/releases` : '';
 // Ohne --base der Repo-Name aus der Repo-Adresse; sonst die Wurzel.
 const BASE = normalizeBase(args.base || (REPO ? `/${REPO.split('/').pop()}/` : '/'));
 
@@ -229,12 +258,13 @@ copyFile(srcIndex, path.join(OUT, 'index.html'));
 note('client/index.html → index.html');
 
 // api-browser.js NICHT mitkopieren — es wandert gleich als api.js hinein.
-const nSrc = copyTree(srcClientSrc, path.join(OUT, 'src'), (name) => name === 'api-browser.js');
+const nSrc = copyTree(srcClientSrc, path.join(OUT, 'src'), (name, from) =>
+  name === 'api-browser.js' || name.startsWith('.') || (fs.statSync(from).isFile() && !/\.(?:js|css)$/i.test(name)));
 note(`client/src → src/  (${nSrc} Dateien)`);
 
 if (fs.existsSync(srcAssets)) {
-  const nAssets = copyTree(srcAssets, path.join(OUT, 'assets'));
-  note(`client/assets → assets/  (${nAssets} Dateien)`);
+  for (const asset of PUBLIC_ASSETS) copyFile(path.join(srcAssets, asset), path.join(OUT, 'assets', asset));
+  note(`client/assets → assets/  (${PUBLIC_ASSETS.length} ausdruecklich freigegebene Dateien; sonstige Assets bleiben lokal)`);
 } else {
   note('client/assets gibt es nicht — uebersprungen');
 }
@@ -242,11 +272,14 @@ if (fs.existsSync(srcAssets)) {
 copyFile(srcModel, path.join(OUT, 'shared', 'model.js'));
 note('shared/model.js → shared/model.js');
 
-const venueFiles = fs.existsSync(srcVenues)
-  ? fs.readdirSync(srcVenues).filter((f) => f.toLowerCase().endsWith('.json')).sort()
-  : [];
+const venueFiles = PUBLIC_VENUES.filter((file) => fs.existsSync(path.join(srcVenues, file)));
 if (!venueFiles.length) warn('In config/venues liegt keine .json — die Browser-Fassung startet ohne Venue.');
-for (const f of venueFiles) copyFile(path.join(srcVenues, f), path.join(OUT, 'config', 'venues', f));
+for (const file of venueFiles) {
+  const target = path.join(OUT, 'config', 'venues', file);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  const source = JSON.parse(fs.readFileSync(path.join(srcVenues, file), 'utf8'));
+  fs.writeFileSync(target, `${JSON.stringify(publicVenueData(source), null, 2)}\n`, 'utf8');
+}
 note(`config/venues → config/venues/  (${venueFiles.length} Dateien)`);
 
 /* three — nur die zwei gebrauchten Teile. Das Paket selbst ist 260 MB. */
@@ -410,9 +443,7 @@ if (firstModule >= 0) {
 
 /* d) Hinweisband ueber der Kopfzeile */
 
-const linkMarkup = RELEASES
-  ? `<a class="tbgHintLink" href="${escapeHtml(RELEASES)}" target="_blank" rel="noopener noreferrer">Desktop-Fassung herunterladen</a>`
-  : '<span class="tbgHintLink dim">Desktop-Fassung lokal starten</span>';
+const linkMarkup = '<span class="tbgHintLink dim">Export: Desktop-Fassung auf dem eigenen Rechner</span>';
 
 const hintMarkup = `
   <!-- ====================================================== Hinweisband -->
@@ -420,7 +451,8 @@ const hintMarkup = `
        diese Fassung kann und was nicht, und laesst sich dauerhaft wegklicken. -->
   <div id="tbgHint" role="note">
     <span class="tbgHintTxt">Browser-Fassung — zum Planen und Zeigen.
-      Rendern und Ausliefern brauchen ffmpeg und laufen nur in der Desktop-Fassung.</span>
+      Rendern und Ausliefern brauchen ffmpeg auf dem eigenen Rechner.
+      Raumgeometrie und Fahrwege der Vorlagen enthalten Annahmen; kein bestätigtes Hausaufmaß.</span>
     ${linkMarkup}
     <button id="tbgHintClose" class="tbgHintClose" type="button"
             title="Hinweis ausblenden" aria-label="Hinweis ausblenden">✕</button>
@@ -446,7 +478,7 @@ const hintMarkup = `
 if (/<header\b[^>]*\bid=["']topbar["']/i.test(html)) {
   html = html.replace(/(\n?[ \t]*)(<!--[^>]*-->\s*)?(<header\b[^>]*\bid=["']topbar["'])/i,
     (whole, indent, comment, header) => `${hintMarkup}\n${indent || '\n  '}${comment || ''}${header}`);
-  note('Hinweisband ueber der Kopfzeile eingesetzt' + (RELEASES ? ` (Link: ${RELEASES})` : ' (ohne Link)'));
+  note('Hinweisband mit Desktop- und Annahmen-Hinweis eingesetzt; kein Link auf private Releases');
 } else {
   warn('Kopfzeile #topbar nicht gefunden — das Hinweisband wurde nicht eingesetzt.');
 }
@@ -574,20 +606,18 @@ WAS HIER GEHT
 
 WAS HIER NICHT GEHT
 -------------------
-Alles, was ffmpeg braucht: Rendern, Conform, Proxies, QC und das Schneiden
-der Panels. Das ist keine Bequemlichkeitsentscheidung, sondern eine Grenze
-der Technik:
+Rendern, Conform, Proxies, technische QC und das Erzeugen einzelner
+Paneldateien sind in dieser Fassung nicht enthalten. Diese Funktionen
+benutzen ffmpeg in der lokalen Anwendung; auf GitHub Pages gibt es
+keinen Renderdienst.
 
-  * ffmpeg als WebAssembly bringt keinen hap-Encoder mit — und HAP ist genau
-    das, was ans Schiff geliefert wird.
-  * Es ist rund zehnmal langsamer als das native ffmpeg.
-  * Die 32-Bit-Fassung stößt bei etwa 2 GB an eine Speicherdecke.
+Die Browser-Fassung ist zum PLANEN und ZEIGEN da. Fuer das Ausliefern muss
+die Desktop-Fassung mit ffmpeg auf dem eigenen Rechner vorhanden sein.
+Diese oeffentliche Seite bietet keinen Desktop-Download an.
 
-Ein Zwei-Minuten-Loop auf Wand D hat 3600 Frames. Das ist im Browser nicht
-zu machen.
-
-Die Browser-Fassung ist zum PLANEN und ZEIGEN da. Das Ausliefern bleibt am
-Desktop: ${RELEASES || 'siehe Releases-Seite des Projekts'}
+Die Venue-Vorlagen enthalten Annahmen zu Raumgeometrie und Fahrwegen.
+Sie sind kein bestaetigtes Hausaufmass. Produktionsbilder und Original-PDFs
+werden nicht mit dieser Browser-Fassung veroeffentlicht.
 
 
 BROWSER
