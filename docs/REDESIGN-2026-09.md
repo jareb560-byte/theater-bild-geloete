@@ -60,9 +60,9 @@ und werden mit wachsendem Abstand erneut versucht. Das Projektmenü bietet eine 
 GitHub-Pages-Bereitstellung und Release-Downloads wurden in dieser lokalen Überarbeitung
 noch nicht veröffentlicht oder als externe Dienste verifiziert.
 
-Das Veröffentlichungsziel für den Quellcode ist das private Repository
+Aktualisierung vom 17. September 2026: Der Quellcode liegt auf Wunsch des Eigentümers im öffentlichen Repository
 [jareb560-byte/theater-bild-geloete](https://github.com/jareb560-byte/theater-bild-geloete).
-GitHub Pages ist nicht aktiviert; sein Workflow ist ausschließlich manuell startbar.
+Die [Browser-Fassung](https://jareb560-byte.github.io/theater-bild-geloete/) ist über GitHub Pages erreichbar; ihr Workflow ist ausschließlich manuell startbar.
 Ein normaler Push veröffentlicht keine Website. `private: true` verhindert eine versehentliche
 npm-Veröffentlichung. Lokal starten: im Projektordner `npm ci`, bei Bedarf
 `npm run setup:ffmpeg`, anschließend `npm start -- --open`.

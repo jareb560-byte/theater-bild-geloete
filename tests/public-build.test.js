@@ -3,12 +3,12 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('public build excludes private assets, extra venues, contact metadata and machine paths', () => {
+test('public build excludes private assets and self-hosts the MP4 module with its license and source', async () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'tbg-public-build-'));
   try {
     const copy = (relative) => {
@@ -20,6 +20,8 @@ test('public build excludes private assets, extra venues, contact metadata and m
       'tools/build-web.js', 'package.json', 'client', 'shared/model.js', 'config/venues',
       'server/ops/filtergraph.js', 'node_modules/three/build/three.module.js',
       'node_modules/three/examples/jsm/controls/OrbitControls.js',
+      'node_modules/mediabunny/dist/bundles/mediabunny.mjs', 'node_modules/mediabunny/LICENSE',
+      'node_modules/mediabunny/package.json', 'node_modules/mediabunny/src',
     ]) copy(relative);
 
     fs.mkdirSync(path.join(fixture, 'client/assets'), { recursive: true });
@@ -49,6 +51,25 @@ test('public build excludes private assets, extra venues, contact metadata and m
     assert.doesNotMatch(html, /href=["'][^"']*github\.com[^"']*\/releases/);
     assert.match(html, /kein bestätigtes Hausaufmaß/);
     assert.match(html, /Desktop-Fassung auf dem eigenen Rechner/);
+    assert.match(html, /als MP4 exportieren/);
+    assert.match(html, /ohne Server-Upload/);
+    assert.doesNotMatch(html, /html\[data-mode="browser"\]\s+#viewSwitch\s+\[data-view="render"\][^{]*\{\s*display\s*:\s*none/i);
+    assert.match(html, /html\[data-mode="browser"\]\s+#viewSwitch\s+\[data-view="qc"\]\s*\{display:none\}/);
+    const importMap = JSON.parse(html.match(/<script\b[^>]*type="importmap"[^>]*>([\s\S]*?)<\/script>/i)[1]);
+    assert.equal(importMap.imports.mediabunny, './vendor/mediabunny.mjs');
+    assert.equal(fs.existsSync(path.join(output, importMap.imports.mediabunny)), true);
+    assert.ok(fs.statSync(path.join(output, 'vendor/mediabunny.LICENSE')).size > 100);
+    const bundlePath = path.join(output, importMap.imports.mediabunny);
+    assert.deepEqual(fs.readFileSync(bundlePath), fs.readFileSync(path.join(root, 'node_modules/mediabunny/dist/bundles/mediabunny.mjs')));
+    const mediaModule = await import(pathToFileURL(bundlePath).href);
+    assert.equal(typeof mediaModule.Input, 'function');
+    assert.equal(typeof mediaModule.Output, 'function');
+    assert.equal(typeof mediaModule.Mp4OutputFormat, 'function');
+    assert.equal(typeof mediaModule.CanvasSource, 'function');
+    const sourceIndex = JSON.parse(fs.readFileSync(path.join(output, 'vendor/mediabunny-source/index.json'), 'utf8'));
+    assert.equal(sourceIndex.license, 'MPL-2.0');
+    assert.ok(sourceIndex.files.includes('src/index.ts'));
+    for (const file of sourceIndex.files) assert.equal(fs.existsSync(path.join(output, 'vendor/mediabunny-source', file)), true);
 
     const protectedBuild = spawnSync(process.execPath, ['tools/build-web.js', '--out', 'client'], {
       cwd: fixture, encoding: 'utf8', windowsHide: true,

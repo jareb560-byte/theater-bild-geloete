@@ -1,158 +1,141 @@
 # Die Browser-Fassung
 
-Theater-Bild-Gelöte gibt es zweimal. Die **Desktop-Fassung** wird entpackt und gestartet und kann
-alles. Die **Browser-Fassung** liegt als Adresse im Netz, braucht keine Installation und kann
-3D-Bühne, Panel-Editor, Venue-Verwaltung und Projektplanung.
+**[Theater-Bild-Gelöte online öffnen](https://jareb560-byte.github.io/theater-bild-geloete/)**.
+Die Website bietet 3D-Bühne, Panel-Editor, Projektplanung und MP4-Export ohne Installation.
+Die Schaltfläche **Anleitung** erklärt den Einstieg und bleibt jederzeit erreichbar.
 
-**[Online-Version öffnen](https://jareb560-byte.github.io/theater-bild-geloete/)**.
-Die Schaltfläche **Anleitung** erklärt die Bedienung in wenigen Schritten.
+Für HAP und andere Hausformate: **[Windows-Setup](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest/download/Theater-Bild-Geloete-0.3.0-Windows-x64-Setup.exe)** ·
+**[Mac Apple Silicon](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest/download/Theater-Bild-Geloete-0.3.0-macOS-arm64.dmg)** ·
+**[Mac Intel](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest/download/Theater-Bild-Geloete-0.3.0-macOS-x64.dmg)**.
+[Installationshilfe](INSTALLATION.md) · [HAP exportieren](../README.md#hap-exportieren).
 
-Beide benutzen denselben Quelltext. Der Unterschied ist eine einzige Datei: statt mit einem
-lokalen Server zu reden, arbeitet die Browser-Fassung gegen den Speicher des Browsers und die
-Dateien, die du ihr zeigst.
+## Ein Video direkt online erstellen
 
----
+1. In **Bibliothek → Ordner hinzufügen** einen lokalen Medienordner auswählen. Für Videos
+   ein browsergeeignetes Format wie H.264/MP4 oder WebM verwenden; Bilder gehen ebenfalls.
+2. Datei markieren, Zielwand und Slot wählen und **Platzieren**. `master` füllt die
+   ganze Wand, A1/A2 usw. sind einzelne Panels. Im **Panel-Editor** den Ausschnitt einstellen.
+3. **Export** öffnen und eine Wand wählen. Zuerst mit **Ausschnitt** einen kurzen Bereich
+   testen, zum Beispiel 0 bis 5 Sekunden. **Ganzer Loop** exportiert die volle Projektlänge.
+4. **MP4 erstellen** anklicken und den Tab geöffnet lassen. Der Fortschritt erscheint im
+   Renderbereich; **Export abbrechen** beendet den laufenden Vorgang.
+5. Nach Abschluss **MP4 herunterladen** anklicken. Die fertige Datei bleibt dort verfügbar,
+   bis ein neuer Export sie ersetzt oder die Seite geschlossen oder neu geladen wird.
 
-## Wofür die Browser-Fassung da ist
+Es entsteht eine H.264-MP4 **ohne Ton**, in der Pixelauflösung der gewählten Wand und mit
+der Bildrate des Projekts. Die aktiven Layer, ihre Anordnung und ihr zeitlicher Verlauf
+werden zu einer flachen Wandfläche zusammengesetzt. Die 3D-Raumausstattung, Panelfahrten,
+Kamera und Hilfslinien sind nicht Teil dieses Videos. Der Export verwendet den Projektstand
+beim Start; spätere Änderungen beeinflussen diesen laufenden Export nicht.
 
-Zum **Planen und Zeigen**. Du schickst jemandem eine Adresse, er klickt drauf und sieht die
-Bühne — ohne Installation, ohne Warnung, auch vom Tablet in der Probe.
-
-Konkret: die Panelaufteilung durchdenken, Fahrwege ausprobieren, prüfen ob ein Motiv die
-Mittelnaht überlebt, sehen ab wann ein aufgefahrenes Panel für den Zuschauer verschwindet,
-ein neues Haus anlegen und durchrechnen.
-
-Nicht dafür da ist sie, die Lieferdateien zu erzeugen. Das bleibt am Desktop.
-
----
+Die Verarbeitung läuft auf dem eigenen Rechner. Es gibt keinen Upload der Medien,
+keinen Render-Server und keine nutzungsabhängigen Renderkosten. Große Auflösungen und lange
+Loops brauchen entsprechend Zeit und Arbeitsspeicher. Die fertige Datei wird bis zum Download
+im Browser gehalten; deshalb zuerst einen kurzen Ausschnitt prüfen.
+Pro Video gilt eine Grenze von **256 MB**. Bildfilter und weiche Übergänge werden vor dem
+Export mit einem Hinweis abgewiesen. Harte Schnitte, Zuschnitt, Anordnung und Deckkraft
+sind möglich; für darüber hinausgehende Bearbeitung die lokale Fassung verwenden.
 
 ## Was geht, was nicht
 
-| | Desktop | Browser |
+| Funktion | Lokal | Browser |
 |---|---|---|
-| 3D-Bühne, Panels fahren, Sichtgrenzen | ja | **ja** |
-| Panel-Editor, Croppen, Einrasten | ja | **ja** |
-| Venues anlegen und rechnen | ja | **ja** |
-| Nähte und Sperrzonen prüfen | ja | **ja** |
-| ffmpeg-Befehl erzeugen und kopieren | ja | **ja** |
-| Vorschau von Videomaterial | jedes Format | nur was der Browser abspielt |
-| Bildrate angleichen (Conform) | ja | nein |
-| Rendern und Ausliefern | ja | nein |
-| Qualitätskontrolle | ja | nein |
+| 3D-Bühne, Panel-Editor, Venues und Projektplanung | ja | ja |
+| H.264-MP4 einer ganzen Wand, ohne Ton | ja | ja, bei unterstützter Auflösung |
+| Vorschau der Medien | über FFmpeg-Proxies | browsergeeignete Videos und Bilder |
+| HAP, ProRes, MPEG-2 | ja | nein |
+| Separate Paneldateien | ja | nein |
+| Conform und technische Qualitätskontrolle | ja | nein |
+| FFmpeg-Befehl anzeigen und prüfen | ja | nein |
 
-### Rendern in der lokalen Fassung
+MP4 ist für Ansicht und Weitergabe geeignet. Ob es als Lieferformat akzeptiert wird, muss
+mit dem Haus abgestimmt werden. Ein erfolgreicher MP4-Export bestätigt keine TUI-Abnahme.
+Für vorgeschriebene HAP-, ProRes- oder MPEG-2-Dateien und technische QC bleibt die lokale
+Fassung mit FFmpeg erforderlich.
 
-Diese Browser-Fassung enthält keinen ffmpeg-Encoder und keinen Renderdienst. Conform,
-Lieferdateien und die technische Qualitätskontrolle nutzen deshalb weiterhin ffmpeg auf
-dem eigenen Rechner. GitHub Pages stellt die Oberfläche bereit; die Verarbeitung der
-Projektplanung findet im Browser statt.
+## Browser und Medien
 
----
+Eine aktuelle Version von **Chrome oder Edge** verwenden. Die Ordnerauswahl und der
+MP4-Export brauchen Browserfunktionen, die nicht überall verfügbar sind. Die Seite muss
+über HTTPS oder lokal über `localhost` aufgerufen werden. Auch bei einem unterstützten Browser
+kann eine besonders große oder ungewöhnliche Wandauflösung vom Rechner nicht unterstützt werden;
+der Export zeigt dann eine Fehlermeldung. Als Ausweichweg dient die lokale Fassung.
 
-## Der Ablauf zwischen beiden Fassungen
+HAP, ProRes und MPEG-2 sind für diese Browservorschau kein geeigneter Ausgangspunkt.
+Für die Online-Arbeit eine H.264-/MP4- oder WebM-Kopie verwenden. Nicht abspielbare oder
+fehlende Quelldateien lassen sich nicht durch die Projektdatei ersetzen.
 
-Die Projektdatei ist die Brücke. Sie ist ein paar Kilobyte groß und verweist relativ auf das
-Material — nicht das Video wandert hin und her, sondern das Rezept.
+Nach einem Neuladen gegebenenfalls denselben Medienordner erneut einlesen. Die Planung
+bleibt gespeichert, aber der Browser benötigt wieder Zugriff auf die lokalen Dateien.
 
-1. Im Browser planen: Wände belegen, Fahrwege festlegen, Ausschnitte setzen.
-2. **Projekt speichern** — es wird als `.tbg.json` heruntergeladen.
-3. Die Datei in der Desktop-Fassung öffnen.
-4. Dort rendern und ausliefern.
+## Projekt sichern und lokal weiterarbeiten
 
-Der kurze Weg für einen einzelnen Render: In der Browser-Fassung gibt es die
-Filtergraph-Vorschau. Sie erzeugt den vollständigen ffmpeg-Befehl im Klartext — den kannst du
-kopieren und auf einem Rechner mit ffmpeg einfach einfügen. Dafür braucht es die
-Desktop-Fassung gar nicht.
+**··· neben dem Projektnamen → Projektdatei herunterladen** speichert eine `.tbg.json`.
+Sie enthält die Planung und Medienverweise, nicht die Medien selbst. Im Browser lässt sie
+sich über **··· → Projektdatei öffnen** wieder laden. Eine heruntergeladene MP4 ersetzt
+diese bearbeitbare Projektdatei nicht.
 
----
+Für ein Online-Projekt, dessen Medien aus einem gemeinsamen Ordner eingelesen wurden:
 
-## Welche Browser
+1. Die heruntergeladene `.tbg.json` in genau diesen Medienordner legen; die Unterordnerstruktur
+   beibehalten. Die relativen Medienverweise werden lokal von der Projektdatei aus aufgelöst.
+2. In der lokalen Anwendung **··· neben dem Projektnamen → Projektdatei öffnen** wählen.
+   Zum Medienordner navigieren und die `.tbg.json` auswählen. Der Dateidialog bietet auch
+   **Pfad direkt eingeben**, um zu einem anderen Ordner zu wechseln.
+3. Die Zuordnung der Medien kontrollieren und unter **Export** das benötigte Hausformat wählen.
+   Zuerst einen kurzen Testrender erstellen, danach die Ausgabe in **QC** prüfen.
 
-**Chrome und Edge** können alles. Sie beherrschen die File System Access API, über die du der
-Seite einen Ordner zeigst.
+Der Einrichtungsassistent bietet zusätzlich eine Liste der Projekte aus
+`<Arbeitsverzeichnis>/projects/`. **Projektdatei öffnen** kann auch Dateien außerhalb dieses
+Ordners laden. Die Medienpfade müssen weiterhin passen; das bloße Kopieren der Projektdatei
+verschiebt die Medien nicht.
+Bei mehreren Quellordnern oder nachträglich verschobenen Dateien die Verweise vor dem Rendern
+prüfen. Ein erneuter Bibliotheksscan ersetzt derzeit kein zuverlässiges Neuverknüpfen aller Layer.
 
-**Firefox und Safari** können das nicht. Dort laufen 3D-Bühne, Editor, Venue-Verwaltung und
-Filtergraph normal, aber der Knopf „Ordner einlesen" meldet im Klartext, dass dieser Browser
-das nicht unterstützt. Es scheitert nichts stillschweigend.
+Beim Start aus dem Quellcode kann ein Projekt auch mit
+`npm start -- --open --project "C:\Medienordner\Projekt.tbg.json"` geöffnet werden.
 
-Videomaterial muss außerdem etwas sein, das der Browser abspielen kann: **H.264 in MP4 oder MOV,
-oder WebM**. HAP, ProRes und MPEG-2 dekodiert kein Browser — solche Dateien erscheinen in der
-Bibliothek mit einem deutlichen Hinweis, und die Vorschau bleibt schwarz. Zum Planen reicht das
-oft, weil Auflösung und Länge trotzdem angezeigt werden.
+## Veröffentlichung und eigene Builds
 
----
-
-## Veröffentlichen
-
-Der Quellcode liegt im privaten Repository
+Der Quellcode liegt im öffentlichen Repository
 [jareb560-byte/theater-bild-geloete](https://github.com/jareb560-byte/theater-bild-geloete).
-Die öffentliche Browser-Version wird über GitHub Pages bereitgestellt:
-[Theater-Bild-Gelöte online](https://jareb560-byte.github.io/theater-bild-geloete/).
-Ein normaler Push führt die Prüfungen aus. Die Veröffentlichung einer neuen Browser-Fassung
-wird separat gestartet.
+Die Browser-Version wird öffentlich über GitHub Pages bereitgestellt.
+**[Desktop herunterladen](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest)**
+führt zu den verfügbaren Installationsdateien für Windows und Mac. Ein normaler Push
+führt die Prüfungen aus. Der Workflow **„Browser-Fassung veroeffentlichen“** startet nur
+manuell über `workflow_dispatch`; Pages muss als Quelle **GitHub Actions** verwenden.
 
-Einmalig einrichten:
+Lokal bauen:
 
-1. Repository auf GitHub anlegen und den Code hochladen.
-2. Dort unter **Settings → Pages → Build and deployment** als Quelle **„GitHub Actions"**
-   einstellen. Der Veröffentlichungsjob benötigt diese Pages-Konfiguration.
-3. Den Workflow **„Browser-Fassung veroeffentlichen“** unter **Actions** manuell starten.
-
-`.github/workflows/pages.yml` ist ausschließlich manuell über `workflow_dispatch` startbar.
-Nach einer erfolgreichen Bereitstellung steht die tatsächliche Adresse unter **Settings → Pages**.
-
-Selbst bauen und anschauen geht auch ohne GitHub:
-
-```bash
-node tools/build-web.js --out dist-web
+```sh
+npm ci
+npm run build:web
 ```
 
-Der Ordner `dist-web/` ist die fertige Seite. **Wichtig:** Sie funktioniert nur über einen
-Webserver, nicht per Doppelklick auf die `index.html` — ES-Module lassen sich nicht über
-`file://` laden.
+`dist-web/` ist die fertige Website. Sie benötigt einen Webserver; ein Doppelklick auf
+`index.html` funktioniert wegen der Modulimporte nicht. Der strenge Build überprüft die
+lokalen Imports und bricht bei Warnungen ab. Die mitgelieferten Browser-Bibliotheken
+werden mit veröffentlicht; es wird kein externer Renderdienst eingebunden.
 
-`npm run build:web` führt denselben Build mit `--strict` aus. Warnungen führen dabei zu
-einem Fehlerstatus. Der Pages-Workflow übergibt die tatsächliche Repository-Adresse aus
-dem GitHub-Kontext; lokale Builds bekommen ohne `--repo` keinen Downloadlink zu einer
-unbekannten Release-Seite.
-
-Für Desktop-Pakete gibt es `npm run build:portable`. Ein Versions-Tag, das zur Version in
-`package.json` passt, startet den Release-Workflow. Dieser erstellt einen Entwurf mit den
-Archiven. Bei manueller Ausführung muss ein bereits vorhandenes Versions-Tag angegeben werden.
-Ein npm-Paket wird von keinem der Workflows veröffentlicht.
-
----
+Für Desktop-Pakete gibt es `npm run build:portable`. Passende Versions-Tags starten den
+Release-Workflow und erzeugen einen Entwurf. Ein npm-Paket wird nicht veröffentlicht.
 
 ## Was öffentlich ist
 
-Die Website und die für ihre Funktion nötigen Browserdateien sind öffentlich abrufbar.
-Das private GitHub-Repository ist dadurch nicht öffentlich. Ein privates Repository bedeutet
-keinen Zugangsschutz für diese Pages-Website.
-
-Veröffentlicht werden die Anwendung und die mitgelieferten Bühnenvorlagen. Produktionsbilder,
-Videos, lokale Projekte und der TUI-PDF-Guide gehören nicht zum Website-Paket.
+Die Website, die nötigen Browserdateien und mitgelieferten Bühnenvorlagen sind öffentlich
+abrufbar. Auch das Quellcode-Repository ist öffentlich.
+Produktionsbilder, Videos, lokale Projekte und der TUI-PDF-Guide gehören nicht zum Website-Paket.
 Ausgewähltes eigenes Material wird im Browser verarbeitet und nicht zu GitHub hochgeladen.
-Eigene Projekte liegen im Browserspeicher; für eine dauerhafte Sicherung als `.tbg.json`
-herunterladen. Die Projektdatei enthält die Anordnung und Medienverweise, nicht die Medien selbst.
-
----
+Der Browserspeicher ist keine dauerhafte Sicherung: wichtige Projekte als `.tbg.json` herunterladen.
 
 ## Wenn etwas nicht geht
 
-**Weiße Seite.** Fast immer ein Pfadproblem. Prüfen, ob `.nojekyll` im Wurzelverzeichnis der
-Seite liegt und ob in den Entwicklerwerkzeugen unter „Netzwerk" ein 404 auftaucht. Das
-Bauskript meldet solche Fälle beim Bauen; mit `--strict` bricht es dann sogar ab.
-
-**„Ordner einlesen" tut nichts.** Falscher Browser — Chrome oder Edge nehmen.
-
-**Video bleibt schwarz.** Format, das der Browser nicht dekodiert (HAP, ProRes, MPEG-2). In
-der Bibliothek steht der Hinweis dazu.
-
-**Projekt ist weg.** Das Projekt liegt im Speicher des Browsers für diese Adresse. Wird der
-Browserspeicher geleert, ist es fort. Deshalb: alles, was zählt, über **Projekt speichern** als
-Datei sichern. Das ist ohnehin der Weg zur Desktop-Fassung.
-
-**Nach dem Neuladen sind die Videos weg.** Der Browser darf Ordner nicht dauerhaft ohne
-Nachfrage lesen. Die Seite merkt sich den Ordner und fragt beim nächsten Start nach der
-Erlaubnis; wird sie verweigert, muss der Ordner neu eingelesen werden. Das Projekt selbst
-bleibt davon unberührt.
+- **MP4-Erstellung nicht verfügbar:** einen aktuellen Chrome oder Edge nutzen und die Seite
+  über HTTPS öffnen. Bei einer nicht unterstützten Auflösung lokal rendern.
+- **Medien fehlen nach dem Neuladen:** denselben Medienordner erneut einlesen und Zugriff erlauben.
+- **Video bleibt schwarz oder Export bricht ab:** prüfen, ob die Quelldatei im Browser abspielbar
+  ist. Mit einem kurzen Ausschnitt testen; gegebenenfalls ein browsergeeignetes Ausgangsformat nutzen.
+- **Projekt ist weg:** nach geleertem Browserspeicher die gesicherte `.tbg.json` öffnen und
+  den Medienordner erneut einlesen.
+- **Weiße Seite nach eigenem Build:** mit einem Webserver öffnen; auf fehlende Dateien und
+  falsche Pfade prüfen. `npm run build:web` führt die strenge Build-Prüfung aus.

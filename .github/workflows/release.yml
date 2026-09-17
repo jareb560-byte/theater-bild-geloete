@@ -1,19 +1,4 @@
-# ---------------------------------------------------------------------------
-# Fertige Pakete bauen und an eine GitHub-Release haengen.
-#
-# Ausgeloest durch eine Versionsmarke. Ablauf bei dir:
-#
-#   git tag v0.2.0
-#   git push origin v0.2.0
-#
-# Danach baut GitHub die vier Pakete und legt einen Release-Entwurf an.
-# Nach dem Prüfen lässt sich dieser Entwurf unter "Releases" veröffentlichen.
-#
-# Laeuft auf windows-latest, weil tools/build-portable.js zum Entpacken des
-# Windows-Node-Archivs PowerShell (Expand-Archive) benutzt.
-# ---------------------------------------------------------------------------
-
-name: Pakete veroeffentlichen
+name: Desktop-Installer bauen
 
 on:
   push:
@@ -21,72 +6,107 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Vorhandene Versionsmarke (z.B. v0.2.0)'
+        description: 'Vorhandene Versionsmarke, z.B. v0.3.0'
         required: true
         type: string
 
 permissions:
-  contents: write   # zum Anlegen der Release noetig
+  contents: read
 
 jobs:
-  pakete:
-    name: Pakete bauen
-    runs-on: windows-latest
+  desktop:
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            arch: x64
+            label: Windows x64
+            binary: dist/desktop/win-unpacked/Theater-Bild-Geloete.exe
+          - os: macos-15
+            platform: mac
+            arch: arm64
+            label: macOS Apple Silicon
+            binary: dist/desktop/mac-arm64/Theater-Bild-Geloete.app/Contents/MacOS/Theater-Bild-Geloete
+          - os: macos-15-intel
+            platform: mac
+            arch: x64
+            label: macOS Intel
+            binary: dist/desktop/mac/Theater-Bild-Geloete.app/Contents/MacOS/Theater-Bild-Geloete
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      TBG_HOME: ${{ github.workspace }}/.cache/release-test-workspace
     steps:
-      - name: Quelltext holen
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
-
-      - name: Node einrichten
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-
-      - name: Versionsmarke pruefen
+      - name: Version und native Architektur prüfen
         shell: bash
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          TARGET_ARCH: ${{ matrix.arch }}
         run: |
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || { echo "Ungueltige Versionsmarke"; exit 1; }
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]] || exit 1
           git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
-          node -e "if (process.env.RELEASE_TAG !== 'v' + require('./package.json').version) throw new Error('Tag und package.json-Version stimmen nicht ueberein')"
+          node -e "if(process.env.RELEASE_TAG!=='v'+require('./package.json').version)throw Error('Tag/version mismatch');if(process.arch!==process.env.TARGET_ARCH)throw Error('Runner architecture mismatch')"
+      - run: npm ci --no-audit --no-fund
+      - name: FFmpeg über denselben Weg wie im App-Assistenten installieren
+        run: node server/cli/install-ffmpeg.js --force
+      - name: Bezogene Programme ausführen und Testpfade festlegen
+        run: node tools/verify-render-runtime.js
+      - name: Regressionen und echte HAP/ProRes/MPEG-2-Dateien prüfen
+        run: npm test
+      - name: Lokalen App-Zugriff prüfen
+        run: node tools/test-desktop-server.cjs
+      - name: Installer bauen
+        run: npm run build:desktop -- --${{ matrix.platform }} --${{ matrix.arch }}
+      - name: Gebaute App mit echter Oberfläche prüfen
+        run: node tools/smoke-desktop.js "${{ matrix.binary }}"
+      - name: Installer bereitstellen
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            dist/desktop/*.exe
+            dist/desktop/*.dmg
 
-      - name: Abhaengigkeiten installieren
+  release:
+    needs: desktop
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          path: installers
+          merge-multiple: true
+      - name: Prüfsummen und Installationsanleitung
         shell: bash
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci --no-audit --no-fund
-          else
-            npm install --no-audit --no-fund
-          fi
-
-      # Laedt die Node-Laufzeiten fuer alle vier Zielsysteme von nodejs.org
-      # und schnuert daraus die Archive in dist/.
-      - name: Pakete bauen
-        run: npm run build:portable
-
-      - name: Ergebnis auflisten
-        shell: bash
-        run: ls -la dist/
-
-      # Ueber die GitHub-CLI, damit keine Fremdaktion noetig ist.
-      # Die Release traegt den Namen der Versionsmarke.
-      - name: Release anlegen und Pakete anhaengen
+          cp desktop/INSTALLATION.md installers/INSTALLATION.md
+          cd installers
+          sha256sum *.exe *.dmg > SHA256SUMS.txt
+      - name: Geprüfte Pakete als Release-Entwurf bereitstellen
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          gh release create "$RELEASE_TAG" --verify-tag --draft \
-            --title "Theater-Bild-Geloete $RELEASE_TAG" \
-            --notes "Fertige Pakete. Entpacken und starten — Node und npm sind nicht noetig.
-
-          Windows: ZIP vor dem Entpacken per Rechtsklick -> Eigenschaften -> Zulassen freigeben, dann Theater-Bild-Geloete.cmd doppelklicken.
-          macOS:   Rechtsklick auf Theater-Bild-Geloete.command -> Oeffnen (beim ersten Mal).
-          Linux:   ./theater-bild-geloete.sh
-
-          ffmpeg ist nicht enthalten und wird beim ersten Start auf Wunsch geholt." \
-            dist/*.zip dist/*.tar.gz
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "Theater-Bild-Gelöte $RELEASE_TAG" --notes-file desktop/INSTALLATION.md
+          fi
+          gh release upload "$RELEASE_TAG" installers/* --clobber

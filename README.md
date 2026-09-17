@@ -1,25 +1,48 @@
 # Theater-Bild-Gelöte
 
-*English version: [README.en.md](README.en.md)*
+**Videos auf LED-Wände legen, in der 3D-Bühne ansehen und passend exportieren.**
+Für ganze Wände und bewegliche Einzelpanels. Deine Medien bleiben auf deinem Rechner.
 
-Repository: [jareb560-byte/theater-bild-geloete](https://github.com/jareb560-byte/theater-bild-geloete)
-(privat, Zugriff nur für berechtigte GitHub-Konten).
+**[Im Browser starten](https://jareb560-byte.github.io/theater-bild-geloete/)** ·
+[Installationshilfe](docs/INSTALLATION.md) · [HAP exportieren](#hap-exportieren) ·
+[English](README.en.md)
 
-**[Online-Version öffnen](https://jareb560-byte.github.io/theater-bild-geloete/)** —
-3D-Bühne, Panel-Editor und Projektplanung ohne Installation. Die Schaltfläche **Anleitung**
-erklärt die ersten Schritte. Die Website ist öffentlich; das Quellcode-Repository bleibt privat.
-Rendern und Qualitätskontrolle laufen in der lokalen Anwendung. Ein npm-Paket ist nicht veröffentlicht.
+| Desktop-App 0.3.0 herunterladen | Passend für |
+|---|---|
+| **[Windows-Setup (.exe)](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest/download/Theater-Bild-Geloete-0.3.0-Windows-x64-Setup.exe)** | Windows 10/11, 64 Bit |
+| **[Mac mit Apple Silicon (.dmg)](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest/download/Theater-Bild-Geloete-0.3.0-macOS-arm64.dmg)** | M1 und neuer, macOS 13+ |
+| **[Mac mit Intel (.dmg)](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest/download/Theater-Bild-Geloete-0.3.0-macOS-x64.dmg)** | Intel, macOS 13+ |
 
-Wer eine LED-Wand bespielt, die aus mehreren beweglichen Teilen besteht, hat drei Probleme
-gleichzeitig: Der Inhalt muss geschlossen funktionieren **und** aufgefahren, wenn die Teile
-auseinandergefahren sind und Lücken zwischen ihnen stehen. Die Einzelteile brauchen Dateien, die
-exakt auf ihre Pixelbreite passen, framegenau gleich lang sind und an den Nähten keine
-Helligkeitsstufe zeigen. Und das Haus verlangt am Ende Codecs — HAP, ProRes, MPEG-2 —, die ein
-normales Schnittprogramm nicht schreibt. Genau dafür ist Theater-Bild-Gelöte da: Es liest beliebiges
-Rohmaterial ein, gleicht Bildrate und Raster an, legt es auf Wand- und Panelflächen, zeigt in einer
-3D-Bühne, wie das Ergebnis geschlossen und aufgefahren aussieht, rendert die Lieferdateien und
-prüft sie gegen die Vorgaben des Hauses. Es läuft vollständig auf dem eigenen Rechner, ohne Cloud,
-und jeder ffmpeg-Aufruf ist im Klartext sichtbar, bevor er startet.
+Windows: Setup öffnen und installieren. Mac: DMG öffnen und die App in **Programme** ziehen.
+Node, Homebrew und Terminal werden für die installierte App nicht benötigt.
+Hinweise zum ersten Öffnen stehen in der [Installationshilfe](docs/INSTALLATION.md).
+
+## In drei Schritten zum Bühnenvideo
+
+1. **Medien hinzufügen.** In **Bibliothek** Videos oder Bilder laden. Online stehen
+   **Dateien hinzufügen** und **Ordner hinzufügen** bereit; lokal **Ordner einlesen**.
+2. **Wand gestalten.** Zielwand und **Ganze Wand** oder ein Panel wählen, **Platzieren**
+   anklicken. Mit **Im Editor bearbeiten** Ausschnitt und Position einstellen.
+3. **Ansehen und exportieren.** In **3D-Bühne** geschlossen und geöffnet prüfen.
+   Unter **Export** eine belegte Wand wählen und zunächst einen kurzen Ausschnitt erstellen.
+
+**Im Browser:** H.264-MP4 ohne Ton erstellen und herunterladen, in Chrome oder Edge.
+**In der Desktop-App:** HAP, ProRes, MPEG-2, separate Paneldateien und technische Qualitätskontrolle.
+Die Schaltfläche **Anleitung** in der App erklärt den Ablauf. Der Quellcode ist öffentlich
+unter der [MIT-Lizenz](LICENSE).
+
+## HAP exportieren
+
+1. Die Desktop-App installieren und beim ersten Start **ffmpeg jetzt holen** wählen.
+   Danach **Erneut prüfen**: Die HAP-Ampel muss grün sein. Dieser einmalige Download braucht Internet.
+2. Material auf eine Wand legen oder über **··· → Projektdatei öffnen** ein vorhandenes Projekt laden.
+3. **Export** öffnen, Wand, Zielordner und das mit dem Haus abgestimmte HAP-Preset wählen.
+   Bei Bedarf **zusätzlich Einzelpanels** aktivieren, einen kurzen Bereich testen und **Rendern** starten.
+4. Die fertige Ausgabe unter **QC** prüfen, bevor der vollständige Loop an das Haus geht.
+
+[Einrichtung von HAP und ProRes](docs/INSTALLATION.md#rendern-mit-hap-und-prores) ·
+[Ausführlicher Produktionsablauf](docs/WORKFLOW.md) ·
+[Browserprojekt am Desktop weiterbearbeiten](docs/BROWSER-FASSUNG.md#projekt-sichern-und-lokal-weiterarbeiten)
 
 ## Was es nicht ist
 
@@ -38,28 +61,58 @@ Es gibt Theater-Bild-Gelöte zweimal, aus einem Quelltext gebaut.
 
 | | **Desktop** | **Browser** |
 |---|---|---|
-| Weitergabe | Archiv entpacken, Starter doppelklicken | eine Adresse aufrufen |
-| Voraussetzung | nichts (Node ist eingepackt) | Chrome oder Edge |
+| Start | Windows-/Mac-App installieren | eine Adresse aufrufen |
+| Voraussetzung | Videowerkzeuge über Einrichtungsassistent laden | Chrome oder Edge |
 | Planen, 3D-Bühne, Panel-Editor, Venues | ja | ja |
-| ffmpeg-Befehl erzeugen | ja | ja |
-| Conform, Rendern, Ausliefern, QC | **ja** | nein |
+| MP4-Video einer ganzen Wand, ohne Ton | ja | **ja**, bei unterstützter Auflösung |
+| HAP, ProRes, MPEG-2 und separate Paneldateien | **ja** | nein |
+| ffmpeg-Befehl erzeugen, Conform, technische QC | **ja** | nein |
 
-Die **Desktop-Fassung** ist die vollständige. Sie entsteht mit `node tools/build-portable.js`
-als je ein Archiv für Windows, macOS und Linux — ohne Installation, ohne Adminrechte.
+Die **Desktop-Fassung** unterstützt die Hausformate und technische Qualitätskontrolle.
+Windows- und Mac-Installationen stehen über die Releases bereit. Zusätzlich erzeugt
+`node tools/build-portable.js` portable Archive für Windows, macOS und Linux.
 
-Die **Browser-Fassung** ist zum Planen und Herzeigen da: Adresse verschicken, fertig. Rendern
-kann sie nicht, weil diese Fassung keinen ffmpeg-Renderdienst enthält. Die Unterschiede stehen in
+Die **Browser-Fassung** kann planen, die Bühne zeigen und eine Wand als H.264-MP4 in voller
+Pixelauflösung exportieren. Die Verarbeitung bleibt auf dem eigenen Rechner. Sie benötigt
+einen aktuellen Chrome oder Edge mit Unterstützung für die gewählte Auflösung. Die Unterschiede stehen in
 [docs/BROWSER-FASSUNG.md](docs/BROWSER-FASSUNG.md). Gebaut wird sie mit
 `node tools/build-web.js`, veröffentlicht über GitHub Pages.
 
 Die Brücke zwischen beiden ist die Projektdatei `.tbg.json`: im Browser planen, herunterladen,
-am Desktop rendern.
+am Desktop die Lieferformate des Hauses erzeugen. Die Medien gehören separat dazu.
+
+### MP4 direkt online erstellen
+
+1. In **Bibliothek** den Medienordner einlesen, die Dateien auf Wand und Slots legen.
+2. **Export** öffnen und die gewünschte Wand wählen.
+3. Zunächst unter **Ausschnitt** zum Beispiel 0 bis 5 Sekunden testen oder **Ganzer Loop** wählen.
+4. **MP4 erstellen** anklicken, den Tab geöffnet lassen und anschließend **MP4 herunterladen** wählen.
+
+Die Datei enthält die flache Wand mit den aktiven Layern, ohne Ton. Die 3D-Raumausstattung,
+Fahrbewegungen und Hilfslinien werden nicht mitgefilmt. Der Export nutzt den Projektstand beim
+Start. Medien werden nicht hochgeladen; es gibt keinen kostenpflichtigen Renderdienst.
+MP4 ist kein automatischer Ersatz für ein vom Haus vorgeschriebenes Lieferformat.
+Die Browser-Ausgabe ist auf 256 MB pro Video begrenzt. Bildfilter und weiche Übergänge
+werden vor dem Export mit einem Hinweis abgewiesen; dafür die lokale Fassung nutzen.
 
 ---
 
 ## Installation
 
-Mit Zugriff auf das private Repository:
+**[Desktop herunterladen](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest)**
+führt zu den verfügbaren Installationsdateien für Windows und Mac. Die lokale Fassung
+unterstützt die Lieferformate HAP, ProRes und MPEG-2.
+
+In der installierten Anwendung führt der Einrichtungsassistent durch Arbeitsordner und
+Hausvorlage. **ffmpeg jetzt holen** richtet die Videowerkzeuge ein. Danach **Erneut prüfen**
+wählen und für HAP auf die grüne HAP-Ampel achten. Node, Homebrew und ein Terminal werden
+für diesen Weg nicht benötigt.
+
+Ein heruntergeladenes Browserprojekt lässt sich über **··· → Projektdatei öffnen** laden.
+Die `.tbg.json` im ursprünglichen Medienordner ablegen, damit ihre relativen Verweise stimmen.
+Sie enthält keine Mediendateien. Weitere Schritte stehen in [Browser-Fassung](docs/BROWSER-FASSUNG.md).
+
+Für die Entwicklung aus dem Quellcode:
 
 ```sh
 git clone https://github.com/jareb560-byte/theater-bild-geloete.git
@@ -123,16 +176,10 @@ npm run setup:ffmpeg
 npm start -- --open
 ```
 
-Kommt der automatische Weg nicht durch, geht es über Homebrew:
-
-```
-brew install ffmpeg
-ffmpeg -hide_banner -encoders | grep hap
-```
-
-Zeigt die zweite Zeile keine Zeile mit `hap`, ist der Build ungeeignet. Dann einen vollständigen
-statischen Build holen und `ffmpeg` und `ffprobe` daraus nach `bin/` im Arbeitsverzeichnis
-kopieren. Auf Apple Silicon läuft alles nativ; Rosetta wird nicht gebraucht.
+Der automatische Bezug wählt die passende Version für Apple Silicon oder Intel, prüft den
+Download und kontrolliert die Encoder. In der installierten Mac-App genügt dafür der Knopf
+**ffmpeg jetzt holen**; Homebrew und Terminal sind nicht nötig. Schlägt der Download fehl,
+zeigt die Jobleiste den Grund. Nach erfolgreicher Einrichtung **Erneut prüfen** wählen.
 
 ### Linux
 

@@ -58,10 +58,9 @@ register('en', {
     'ffmpeg is being fetched (job {id}) — progress is shown in the job bar.',
   'ffmpeg konnte nicht geholt werden': 'ffmpeg could not be fetched',
   'Erneut prüfen': 'Check again',
-  'Der Knopf lädt den BtbN-GPL-Build nach {dir} — dieser Build enthält hap und prores_ks. Es wird nichts am System installiert.':
-    'The button downloads the BtbN GPL build into {dir} — that build contains hap and prores_ks. Nothing is installed system-wide.',
-  'Achtung: Dieser automatische Bezug lädt einen Windows-Build. Auf {platform} bitte den Paketmanager oder einen statischen Build für dieses System benutzen — siehe unten.':
-    'Note: this automatic download fetches a Windows build. On {platform} please use the package manager or a static build for that system — see below.',
+  'Der Knopf lädt einen passenden Build nach {dir} und prüft die benötigten Encoder. Es wird nichts am System installiert.':
+    'The button downloads a suitable build into {dir} and checks the required encoders. Nothing is installed system-wide.',
+  'Alternative Installation und technische Prüfung': 'Alternative installation and technical checks',
   'Serverzustand konnte nicht gelesen werden': 'The server state could not be read',
 
   /* --- Plattformhinweise --- */
@@ -75,8 +74,8 @@ register('en', {
   'Befehl kopieren': 'Copy command',
   'Nach der Installation ein neues Terminal öffnen — ein bereits laufendes kennt den geänderten PATH nicht.':
     'Open a new terminal after installing — one that is already running does not know the changed PATH.',
-  'Homebrew baut ffmpeg mit libsnappy und damit in der Regel mit hap.':
-    'Homebrew builds ffmpeg with libsnappy and therefore usually with hap.',
+  'Auf dem Mac „ffmpeg jetzt holen“ wählen. Die passende Version für Apple Silicon oder Intel wird automatisch eingerichtet; Homebrew und Terminal sind dafür nicht nötig.':
+    'On Mac, choose “Fetch ffmpeg now”. The appropriate version for Apple Silicon or Intel is set up automatically; Homebrew and Terminal are not required.',
   'Ob das Paket am Ende hap enthält, unterscheidet sich von Distribution zu Distribution.':
     'Whether the package ends up containing hap differs from distribution to distribution.',
 
@@ -95,8 +94,8 @@ register('en', {
     'The hap encoder needs libsnappy and is not compiled into many prebuilt packages. Such an ffmpeg will analyse, convert and render everything else perfectly well — only a HAP delivery is impossible with it. So after EVERY installation, check whether hap is really included:',
   'In der Ausgabe müssen {a} und {b} auftauchen. Fehlt hap, hilft nur ein anderer Build.':
     'The output must list {a} and {b}. If hap is missing, only a different build will help.',
-  'Fehlt hap: einen statischen Build mit hap benutzen (Windows und Linux: BtbN-GPL-Builds, macOS: z. B. evermeet.cx) oder ffmpeg selbst mit --enable-libsnappy übersetzen.':
-    'If hap is missing: use a static build that has it (Windows and Linux: BtbN GPL builds, macOS: evermeet.cx for instance) or compile ffmpeg yourself with --enable-libsnappy.',
+  'Fehlt HAP, oben „ffmpeg jetzt holen“ wählen und danach die Encoder-Ampeln prüfen.':
+    'If HAP is missing, choose “Fetch ffmpeg now” above and then check the encoder indicators.',
 
   /* --- Ordner --- */
   'Arbeitsverzeichnis und Version': 'Working directory and version',
@@ -136,10 +135,7 @@ const COMMANDS = {
     { by: 'winget', cmd: 'winget install BtbN.FFmpeg.GPL' },
     { by: 'choco', cmd: 'choco install ffmpeg-full' },
   ],
-  darwin: [
-    { by: 'brew', cmd: 'brew install ffmpeg' },
-    { by: 'port', cmd: 'sudo port install ffmpeg +nonfree' },
-  ],
+  darwin: [],
   linux: [
     { by: 'apt', cmd: 'sudo apt install ffmpeg' },
     { by: 'dnf', cmd: 'sudo dnf install ffmpeg' },
@@ -181,7 +177,7 @@ function platformHint(platform) {
     return t('Nach der Installation ein neues Terminal öffnen — ein bereits laufendes kennt den geänderten PATH nicht.');
   }
   if (platform === 'darwin') {
-    return t('Homebrew baut ffmpeg mit libsnappy und damit in der Regel mit hap.');
+    return t('Auf dem Mac „ffmpeg jetzt holen“ wählen. Die passende Version für Apple Silicon oder Intel wird automatisch eingerichtet; Homebrew und Terminal sind dafür nicht nötig.');
   }
   return t('Ob das Paket am Ende hap enthält, unterscheidet sich von Distribution zu Distribution.');
 }
@@ -423,23 +419,20 @@ export function createSetupView() {
 
     const binDir = (health && health.paths && health.paths.bin) || 'bin/';
     body.appendChild(h('p.dim',
-      t('Der Knopf lädt den BtbN-GPL-Build nach {dir} — dieser Build enthält hap und prores_ks. Es wird nichts am System installiert.',
+      t('Der Knopf lädt einen passenden Build nach {dir} und prüft die benötigten Encoder. Es wird nichts am System installiert.',
         { dir: binDir })));
-    if (platform && platform !== 'win32') {
-      body.appendChild(h('div.msg.warn',
-        t('Achtung: Dieser automatische Bezug lädt einen Windows-Build. Auf {platform} bitte den Paketmanager oder einen statischen Build für dieses System benutzen — siehe unten.',
-          { platform: platformLabel(platform) })));
-    }
     body.appendChild(h('div.row', btnInstall, btnCheck));
 
     // ---------------------------------------------------------- Plattformwege
-    body.appendChild(h('h3', platform ? t('Installation auf diesem System') : t('Installation')));
+    const manual = h('details.setup-manual', h('summary', t('Alternative Installation und technische Prüfung')));
+    body.appendChild(manual);
+    manual.appendChild(h('h3', platform ? t('Installation auf diesem System') : t('Installation')));
     if (!platform) {
-      body.appendChild(h('span.dim', { style: 'font-size:11.5px' },
+      manual.appendChild(h('span.dim', { style: 'font-size:11.5px' },
         t('Der Server meldet seine Plattform nicht. Deshalb stehen hier die Wege für alle drei Systeme.')));
-      for (const key of ['win32', 'darwin', 'linux']) body.appendChild(platformBlock(key));
+      for (const key of ['win32', 'darwin', 'linux']) manual.appendChild(platformBlock(key));
     } else {
-      body.appendChild(platformBlock(platform));
+      manual.appendChild(platformBlock(platform));
     }
 
     // ------------------------------------------------------- hap-Warnung
@@ -448,19 +441,19 @@ export function createSetupView() {
     const verifyCmds = platform
       ? [verifyCommand(platform)]
       : [verifyCommand('win32'), verifyCommand('linux')];
-    body.appendChild(h('div.msg.warn',
+    manual.appendChild(h('div.msg.warn',
       h('b', t('ffmpeg aus Paketquellen kommt häufig OHNE hap')), h('br'),
       t('Der hap-Encoder braucht libsnappy und ist in vielen fertigen Paketen nicht einkompiliert. Ein solches ffmpeg analysiert, konvertiert und rendert alles andere einwandfrei — nur eine HAP-Auslieferung ist damit unmöglich. Deshalb nach JEDER Installation prüfen, ob hap wirklich dabei ist:')));
     for (const cmd of verifyCmds) {
-      body.appendChild(h('div.row',
+      manual.appendChild(h('div.row',
         h('div.cmdbox.grow', cmd),
         copyButton(() => cmd, t('Befehl kopieren'))));
     }
-    body.appendChild(h('p.dim',
+    manual.appendChild(h('p.dim',
       t('In der Ausgabe müssen {a} und {b} auftauchen. Fehlt hap, hilft nur ein anderer Build.',
         { a: 'hap', b: 'prores_ks' })));
-    body.appendChild(h('p.dim',
-      t('Fehlt hap: einen statischen Build mit hap benutzen (Windows und Linux: BtbN-GPL-Builds, macOS: z. B. evermeet.cx) oder ffmpeg selbst mit --enable-libsnappy übersetzen.')));
+    manual.appendChild(h('p.dim',
+      t('Fehlt HAP, oben „ffmpeg jetzt holen“ wählen und danach die Encoder-Ampeln prüfen.')));
 
     // ---------------------------------------------------------- Pfade
     if (health && health.paths) {

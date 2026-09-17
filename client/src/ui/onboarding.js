@@ -149,8 +149,10 @@ register('en', {
     'ffmpeg has been fetched. The indicator above shows the new state.',
   'Der Serverzustand konnte nicht gelesen werden': 'The server state could not be read',
   'Von Hand installieren': 'Install by hand',
-  'Ohne den Encoder hap ist keine HAP-Auslieferung möglich — und genau der fehlt in vielen fertigen Paketen, auch bei Homebrew und apt.':
-    'Without the hap encoder there is no HAP delivery — and that is exactly what many ready-made packages lack, Homebrew and apt included.',
+  'Für HAP muss die zugehörige Ampel grün sein. „ffmpeg jetzt holen“ richtet einen passenden Build ein und prüft die benötigten Encoder.':
+    'For HAP, its indicator must be green. “Fetch ffmpeg now” sets up a suitable build and checks the required encoders.',
+  'Auf dem Mac „ffmpeg jetzt holen“ wählen. Die passende Version für Apple Silicon oder Intel wird automatisch eingerichtet; Homebrew und Terminal sind dafür nicht nötig.':
+    'On Mac, choose “Fetch ffmpeg now”. The appropriate version for Apple Silicon or Intel is set up automatically; Homebrew and Terminal are not required.',
   'Nach einer Installation von Hand hier „Erneut prüfen" drücken.':
     'After installing by hand, press “Check again” here.',
   'Befehl kopieren': 'Copy command',
@@ -240,7 +242,7 @@ const MIN_FREE_BYTES = 20 * 1024 ** 3;
 /** Manuelle Installation je Plattform — zum Kopieren. */
 const MANUAL_INSTALL = [
   { id: 'win', label: 'Windows', cmd: 'winget install BtbN.FFmpeg.GPL' },
-  { id: 'mac', label: 'macOS', cmd: 'brew install ffmpeg' },
+  { id: 'mac', label: 'macOS', cmd: null },
   { id: 'linux', label: 'Linux', cmd: 'sudo apt install ffmpeg' },
 ];
 
@@ -858,7 +860,9 @@ export function createOnboarding(opts = {}) {
     const setPlatform = (id) => {
       manualPlatform = id;
       const entry = MANUAL_INSTALL.find((m) => m.id === id) || MANUAL_INSTALL[0];
-      cmdBox.textContent = entry.cmd;
+      cmdBox.textContent = entry.cmd || t('Auf dem Mac „ffmpeg jetzt holen“ wählen. Die passende Version für Apple Silicon oder Intel wird automatisch eingerichtet; Homebrew und Terminal sind dafür nicht nötig.');
+      cmdBox.className = entry.cmd ? 'cmdbox grow' : 'dim grow';
+      copy.hidden = !entry.cmd;
       for (const b of platSeg.children) b.classList.toggle('on', b.dataset.plat === id);
     };
     for (const m of MANUAL_INSTALL) {
@@ -871,7 +875,7 @@ export function createOnboarding(opts = {}) {
     // Der Hinweis steht immer da, faellt aber nur dann rot aus, wenn hap
     // wirklich fehlt — sonst waere die Warnung Gewoehnung statt Warnung.
     const hapNote = h('div.msg.info',
-      t('Ohne den Encoder hap ist keine HAP-Auslieferung möglich — und genau der fehlt in vielen fertigen Paketen, auch bei Homebrew und apt.'));
+      t('Für HAP muss die zugehörige Ampel grün sein. „ffmpeg jetzt holen“ richtet einen passenden Build ein und prüft die benötigten Encoder.'));
 
     const node = h('div.col',
       h('p', t('ffmpeg ist das Werkzeug, mit dem Theater-Bild-Gelöte analysiert, umwandelt und rendert.')),
@@ -882,10 +886,10 @@ export function createOnboarding(opts = {}) {
       h('div.row', btnInstall, btnCheck),
       h('p.dim', t('Der Knopf lädt einen fertigen Build aus dem Netz nach {dir}. Am System selbst wird nichts installiert.', { dir: binDir })),
       jobBox,
-      h('h3', t('Von Hand installieren')),
-      platSeg,
-      h('div.row', cmdBox, copy),
-      h('p.dim', t('Nach einer Installation von Hand hier „Erneut prüfen" drücken.')),
+      h('details.setup-manual', h('summary', t('Von Hand installieren')),
+        platSeg,
+        h('div.row', cmdBox, copy),
+        h('p.dim', t('Nach einer Installation von Hand hier „Erneut prüfen" drücken.'))),
       h('div.msg.info', t('Weiter geht es auch ohne ffmpeg: Die 3D-Ansicht läuft, nur Analysieren, Proxies und Rendern nicht.')));
 
     function sync(state) {

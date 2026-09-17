@@ -12,12 +12,21 @@
 
 import { h, on, clear, openModal } from '../dom.js';
 import {
-  browse, scanLibrary, makeProxies, conform, deleteMedia, thumbUrl,
+  browse, scanLibrary, addMedia, makeProxies, conform, deleteMedia, thumbUrl,
 } from '../api.js';
-import { store, setStatus, showError, addLayer, dropMedia } from '../store.js';
+import { store, setStatus, showError, addLayer, dropMedia, mergeMedia } from '../store.js';
 import { t, tn, register, fmtNum, fmtBytes, getLang, onLangChange } from '../i18n.js';
 
 register('en', {
+  'Dateien hinzufügen': 'Add files',
+  'Ordner hinzufügen': 'Add folder',
+  'Ganze Wand': 'Whole wall',
+  'Platzieren': 'Place',
+  'Im Editor bearbeiten': 'Edit in editor',
+  'Dateien konnten nicht hinzugefügt werden': 'The files could not be added',
+  '{n} Dateien hinzugefügt. Jetzt eine Datei und das Ziel wählen, dann „Platzieren“.': '{n} files added. Now choose a file and its destination, then click “Place”.',
+  'Noch keine Medien. Füge Videos oder Bilder hinzu. Deine Dateien bleiben auf deinem Rechner.': 'No media yet. Add videos or images. Your files stay on your computer.',
+  '1. Medien hinzufügen · 2. Ziel wählen · 3. Platzieren': '1. Add media · 2. Choose a destination · 3. Place',
   'Die Bildrate ist ein Durchschnitt aus {frames} gezählten Bildern — der Container nennt keine verlässliche Rate (typisch für WebM). Bei variabler Rate unbedingt angleichen.': 'The frame rate is an average of {frames} counted frames; the container provides no reliable rate (typical of WebM). Conform variable-rate footage before rendering.',
   'Variable Bildrate: die Datei hat keinen festen Bildabstand. Ein Haus mit fester Bildrate verträgt das nicht — vor dem Render im Conform auf {target} fps angleichen, sonst entscheidet ffmpeg allein, welche Frames gedoppelt oder verworfen werden.': 'Variable frame rate: frames are not evenly spaced. Conform to {target} fps before rendering for a venue with a fixed frame rate; otherwise ffmpeg chooses which frames to repeat or drop.',
   /* --- Datei- und Ordnerauswahl --- */
@@ -325,6 +334,7 @@ export function pickPath(opts = {}) {
  * ========================================================================== */
 
 export function createLibraryView() {
+  const browser = window.__TBG_MODE === 'browser';
   const g = textGroup();
   const selection = new Set();
   let filterText = '';
@@ -339,14 +349,15 @@ export function createLibraryView() {
   const chkRecursive = h('input', { type: 'checkbox', checked: true });
   const lblRecursive = g.txt(h('span.dim'), 'Unterordner');
   const btnBrowse = g.txt(h('button.btn', { type: 'button' }), 'Blättern …');
-  const btnScan = g.txt(h('button.btn.acc', { type: 'button' }), 'Ordner einlesen');
+  const btnScan = g.txt(h('button.btn', { type: 'button' }), browser ? 'Ordner hinzufügen' : 'Ordner einlesen');
+  const btnFiles = g.txt(h('button.btn.acc', { type: 'button' }), 'Dateien hinzufügen');
   const search = g.ph(h('input', { type: 'search', style: 'width:180px' }), 'Suchen …');
   g.add(() => { search.setAttribute('aria-label', t('Suchen …')); });
   const kindOpts = [
     g.txt(h('option', { value: 'alle' }), 'alle'),
     g.txt(h('option', { value: 'video' }), 'nur Video'),
     g.txt(h('option', { value: 'image' }), 'nur Bilder'),
-    g.txt(h('option', { value: 'noproxy' }), 'ohne Proxy'),
+    ...(!browser ? [g.txt(h('option', { value: 'noproxy' }), 'ohne Proxy')] : []),
     g.txt(h('option', { value: 'issues' }), 'mit Hinweisen'),
     g.txt(h('option', { value: 'fps' }), 'falsche fps'),
   ];
@@ -362,7 +373,8 @@ export function createLibraryView() {
     wallSel.setAttribute('aria-label', t('Zielwand'));
     slotSel.setAttribute('aria-label', t('Zielslot'));
   });
-  const btnPlace = g.txt(h('button.btn.sm.acc', { type: 'button' }), 'auf Slot legen');
+  const btnPlace = g.txt(h('button.btn.sm.acc', { type: 'button' }), 'Platzieren');
+  const btnEdit = g.txt(h('button.btn.sm', { type: 'button', disabled: true }), 'Im Editor bearbeiten');
   const lblTarget = g.txt(h('span.dim'), 'Ziel');
   const selInfo = h('span.dim', { style: 'font-size:12px' });
 
@@ -373,32 +385,48 @@ export function createLibraryView() {
       g.txt(h('th', { style: 'width:80px' }), 'Bild'),
       g.txt(h('th'), 'Name'),
       g.txt(h('th.num'), 'Auflösung'),
-      h('th.num', 'fps'),
+      browser ? null : h('th.num', 'fps'),
       g.txt(h('th.num'), 'Dauer'),
-      g.txt(h('th'), 'Codec'),
-      g.txt(h('th'), 'Alpha'),
-      g.txt(h('th'), 'Proxy'),
+      browser ? null : g.txt(h('th'), 'Codec'),
+      browser ? null : g.txt(h('th'), 'Alpha'),
+      browser ? null : g.txt(h('th'), 'Proxy'),
       g.txt(h('th'), 'Hinweise'),
       h('th', ''))),
     tbody);
   const listBox = h('div.libList.grow', table);
   const emptyNote = g.txt(h('div.msg.info', { style: 'display:none' }),
-    'Noch keine Medien. Oben einen Ordner wählen und „Ordner einlesen" drücken.');
+    browser ? 'Noch keine Medien. Füge Videos oder Bilder hinzu. Deine Dateien bleiben auf deinem Rechner.'
+      : 'Noch keine Medien. Oben einen Ordner wählen und „Ordner einlesen" drücken.');
 
-  const el = h('div.viewbody',
-    h('div.vpBar',
-      scanPath, btnBrowse,
-      h('label.row', { style: 'gap:4px' }, chkRecursive, lblRecursive),
-      btnScan,
+  const el = h('div.viewbody.library-view',
+    browser ? g.txt(h('p.library-workflow'), '1. Medien hinzufügen · 2. Ziel wählen · 3. Platzieren') : null,
+    h('div.vpBar.library-tools',
+      browser ? btnFiles : scanPath, browser ? null : btnBrowse,
+      browser ? null : h('label.row', { style: 'gap:4px' }, chkRecursive, lblRecursive), btnScan,
       h('span.sep'), search, kindSel,
-      h('span.right'), btnAllProxies),
-    h('div.vpBar',
-      selInfo, btnSelProxy, btnSelConform, btnSelDrop,
+      h('span.right'), browser ? null : btnAllProxies),
+    h('div.vpBar.library-target',
+      selInfo, browser ? null : btnSelProxy, browser ? null : btnSelConform, btnSelDrop,
       h('span.sep'),
-      lblTarget, wallSel, slotSel, btnPlace),
+      lblTarget, wallSel, slotSel, btnPlace, btnEdit),
     h('div.pad.grow', { style: 'min-height:0' }, emptyNote, listBox));
 
   /* -------------------------------------------------------------- Aktionen */
+
+  on(btnFiles, 'click', async () => {
+    btnFiles.disabled = true;
+    try {
+      const result = await addMedia();
+      mergeMedia(result.media || []);
+      selection.clear();
+      for (const media of result.media || []) selection.add(media.id);
+      renderRows(store.get());
+      setStatus(t('{n} Dateien hinzugefügt. Jetzt eine Datei und das Ziel wählen, dann „Platzieren“.', { n: result.media?.length || 0 }), 'ok');
+    } catch (error) {
+      if (!error.abgebrochen && error.name !== 'AbortError') showError(t('Dateien konnten nicht hinzugefügt werden'), error);
+    } finally { btnFiles.disabled = false; }
+  });
+  on(btnEdit, 'click', () => store.set({ ui: { view: 'editor' } }));
 
   on(btnBrowse, 'click', async () => {
     const p = await pickPath({ title: 'Ordner einlesen', mode: 'dir', start: scanPath.value.trim() });
@@ -412,7 +440,7 @@ export function createLibraryView() {
     // man auf einem ausgefuellten Feld, gaebe es gar keinen Weg, Material in
     // die Bibliothek zu bekommen — der Knopf "Blättern" laeuft ueber browse(),
     // und das lehnt die Browser-Fassung ab.
-    if (!root && !window.__TBG_MODE) {
+    if (!root && !browser) {
       setStatus(t('Bitte erst einen Ordner angeben.'), 'warn');
       return;
     }
@@ -421,7 +449,7 @@ export function createLibraryView() {
       const res = await scanLibrary(root ? [root] : [], chkRecursive.checked);
       setStatus(t('Ordner wird eingelesen (Job {job}) …', { job: res.jobId }));
     } catch (e) {
-      showError(t('Ordner konnte nicht eingelesen werden'), e);
+      if (!e.abgebrochen && e.name !== 'AbortError') showError(t('Ordner konnte nicht eingelesen werden'), e);
     } finally {
       btnScan.disabled = false;
     }
@@ -596,7 +624,7 @@ export function createLibraryView() {
     if (!slots.includes(targetSlot)) targetSlot = slots[0] || 'master';
     clear(slotSel);
     for (const s of slots) {
-      slotSel.appendChild(h('option', { value: s }, s === 'master' ? t('master (ganze Wand)') : s));
+      slotSel.appendChild(h('option', { value: s }, s === 'master' ? t('Ganze Wand') : s));
     }
     slotSel.value = targetSlot;
   }
@@ -656,8 +684,7 @@ export function createLibraryView() {
       { style: off ? 'color:var(--warn)' : '' },
       t(key, { fps: fmtNum(p.fps, 3), target: fmtNum(fps, 3) }));
     if (counted) {
-      value.title = t('Die Bildrate ist ein Durchschnitt aus {frames} gezählten Bildern — der Container '
-        + 'nennt keine verlässliche Rate (typisch für WebM). Bei variabler Rate unbedingt angleichen.',
+      value.title = t('Die Bildrate ist ein Durchschnitt aus {frames} gezählten Bildern — der Container nennt keine verlässliche Rate (typisch für WebM). Bei variabler Rate unbedingt angleichen.',
       { frames: fmtNum(p.frames || 0, 0) });
     } else if (p.fpsSource) {
       value.title = t('Bildrate laut {source}', { source: p.fpsSource });
@@ -670,9 +697,7 @@ export function createLibraryView() {
     if (vfr) {
       marks.push(h('span.tag.warn', {
         style: 'margin-left:4px',
-        title: t('Variable Bildrate: die Datei hat keinen festen Bildabstand. Ein Haus mit fester Bildrate '
-          + 'verträgt das nicht — vor dem Render im Conform auf {target} fps angleichen, sonst entscheidet '
-          + 'ffmpeg allein, welche Frames gedoppelt oder verworfen werden.', { target: fmtNum(fps, 3) }),
+        title: t('Variable Bildrate: die Datei hat keinen festen Bildabstand. Ein Haus mit fester Bildrate verträgt das nicht — vor dem Render im Conform auf {target} fps angleichen, sonst entscheidet ffmpeg allein, welche Frames gedoppelt oder verworfen werden.', { target: fmtNum(fps, 3) }),
       }, t('variable Bildrate')));
     }
     return h('td.num', value, ...marks);
@@ -697,7 +722,7 @@ export function createLibraryView() {
     }, t(proxyReady ? 'neu' : 'Proxy'));
     on(btnProxy, 'click', () => startProxies([m.id]));
 
-    const btnPlaceOne = h('button.btn.sm', { type: 'button', title: t('Auf den oben gewählten Slot legen') }, t('→ Slot'));
+    const btnPlaceOne = h('button.btn.sm', { type: 'button', title: t('Auf den oben gewählten Slot legen') }, t('Platzieren'));
     on(btnPlaceOne, 'click', () => addLayer(wallSel.value, slotSel.value, m.id));
 
     const btnDel = h('button.btn.sm.ghost', {
@@ -718,15 +743,15 @@ export function createLibraryView() {
       h('td', h('div.nowrap', { style: 'max-width:280px', title: m.absPath || '' }, m.name),
         h('div.dim.nowrap', { style: 'max-width:280px;font-size:11px', title: m.absPath || '' }, m.relPath || m.absPath || '')),
       p ? h('td.num', `${p.width}×${p.height}`) : h('td.num.dim', '—'),
-      fpsCell(m, fps),
+      browser ? null : fpsCell(m, fps),
       p ? h('td.num', t('{sec} s', { sec: fmtNum(p.durationSec, 2) })) : h('td.num.dim', '—'),
-      p ? h('td', h('span.tag', p.codec || '?')) : h('td.dim', '—'),
-      h('td', p && p.hasAlpha ? h('span.tag.info', t('Alpha')) : h('span.dim', '—')),
-      h('td', proxyReady
+      browser ? null : p ? h('td', h('span.tag', p.codec || '?')) : h('td.dim', '—'),
+      browser ? null : h('td', p && p.hasAlpha ? h('span.tag.info', t('Alpha')) : h('span.dim', '—')),
+      browser ? null : h('td', proxyReady
         ? h('span.tag.ok', { title: t('Proxy ist da — die Vorschau kann die Datei abspielen') }, t('da'))
         : h('span.tag.warn', { title: t('Kein Proxy — HAP, ProRes und MPEG-2 spielt der Browser ohne Proxy nicht ab') }, t('fehlt'))),
       h('td', h('div.issues', issueTags(m, fps, state))),
-      h('td', h('div.row', { style: 'gap:3px' }, btnProxy, btnPlaceOne, btnDel)));
+      h('td', h('div.row', { style: 'gap:3px' }, browser ? null : btnProxy, btnPlaceOne, btnDel)));
 
     on(tr, 'click', (ev) => {
       if (ev.target.closest('button') || ev.target === chk) return;
@@ -780,6 +805,7 @@ export function createLibraryView() {
 
   function update(state) {
     if (!state.project) return;
+    btnEdit.disabled = !state.ui.selectedLayerId;
     fillWalls(state);
     if (state.media !== lastMedia || state.project.fps !== lastFps) {
       lastMedia = state.media;

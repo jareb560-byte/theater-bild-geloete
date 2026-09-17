@@ -1,6 +1,6 @@
 {
   "name": "theater-bild-geloete",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local studio for multi-panel LED stage walls: conform footage, align frame rates, merge panels into one wall, preview the stage in 3D and deliver HAP/ProRes/MPEG-2 files. Runs offline, ffmpeg only, no cloud.",
   "keywords": [
     "led",
@@ -54,11 +54,22 @@
     "dev": "node --watch server/index.js",
     "doctor": "node server/cli/doctor.js",
     "setup:ffmpeg": "node server/cli/install-ffmpeg.js",
-    "i18n:check": "node tools/i18n-check.js"
+    "i18n:check": "node tools/i18n-check.js",
+    "desktop": "electron .",
+    "build:desktop": "node tools/desktop-icons.js && electron-builder --config desktop/electron-builder.cjs --publish never",
+    "build:desktop:win": "npm run build:desktop -- --win --x64",
+    "build:desktop:mac": "npm run build:desktop -- --mac --arm64 --x64"
   },
   "dependencies": {
     "express": "^4.19.2",
+    "mediabunny": "1.57.0",
     "three": "^0.166.1"
   },
-  "displayName": "Theater-Bild-Gelöte"
+  "displayName": "Theater-Bild-Gelöte",
+  "devDependencies": {
+    "electron": "44.4.1",
+    "electron-builder": "26.15.3"
+  },
+  "main": "desktop/main.cjs",
+  "author": "Theater-Bild-Gelöte contributors"
 }

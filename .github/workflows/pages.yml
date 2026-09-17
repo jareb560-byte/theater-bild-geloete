@@ -12,7 +12,7 @@
 name: Browser-Fassung veroeffentlichen
 
 on:
-  # Das Quellcode-Repository ist privat. Pages bleibt bewusst manuell.
+  # Pages wird nach der Vorschau bewusst manuell veröffentlicht.
   workflow_dispatch:
 
 # Rechte, die der Ablauf braucht. Bewusst so knapp wie moeglich:

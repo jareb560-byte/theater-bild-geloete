@@ -8,10 +8,8 @@
  * Plattformen:
  *   win32   BtbN-GPL-ZIP, entpackt mit PowerShell Expand-Archive
  *   linux   BtbN-GPL-tar.xz, entpackt mit tar -xJf
- *   darwin  BtbN liefert KEIN macOS. Es wird nichts geraten: entweder liegt
- *           ein brauchbares ffmpeg im PATH, oder der Nutzer bekommt eine
- *           Anleitung (brew bzw. evermeet.cx). "brew install ffmpeg" laeuft
- *           nur, wenn es ausdruecklich verlangt wurde (--brew / allowBrew).
+ *   darwin  native Intel/Apple-Silicon ZIPs von Martin Riedl; feste Version,
+ *           SHA-256, Mach-O-Architektur und Encoder werden vor Einbau geprueft.
  *
  * Nach jeder Installation wird geprueft, ob hap und prores_ks vorhanden sind.
  * Ohne hap ist keine Delivery moeglich - das wird laut gemeldet, nie still.
@@ -25,6 +23,7 @@ import https from 'node:https';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 import { paths, ensureDir } from '../paths.js';
 import * as ffmpeg from '../ffmpeg.js';
@@ -48,6 +47,42 @@ export const DOWNLOAD_URL = DOWNLOADS.win32.url;
 const EXE = process.platform === 'win32' ? '.exe' : '';
 const NEEDED = ['ffmpeg', 'ffprobe'];
 
+// Published checksums: each URL + '.sha256'. Do not silently switch to latest:
+// both executables must remain the tested release, even during provider updates.
+// Provider: https://ffmpeg.martin-riedl.de/ (signed native macOS builds).
+export const MAC_BUILDS = Object.freeze({
+  x64: { release: '9.0.1', base: 'https://ffmpeg.martin-riedl.de/download/macos/amd64/1787081194_9.0.1/', sha256: {
+    ffmpeg: '5bdead62ff504ab9b447cc72b212c4fb481e3f7de5877d427a51bee8136dda40',
+    ffprobe: '34511bbcf1988ad2886023bf5ace4f44cf62e6defeb3d194d6f7619e5b061f7f',
+  } },
+  arm64: { release: '9.0.1', base: 'https://ffmpeg.martin-riedl.de/download/macos/arm64/1787073674_9.0.1/', sha256: {
+    ffmpeg: '8287a1b2229e05eb41859f073e18e6c52c60a778f2f5e6881070fe51b79407fe',
+    ffprobe: '102a26b8940a053298d9929bfaae71e4b6ef65ba5f19a99a88c433108560741a',
+  } },
+});
+
+export function macBuild(arch = process.arch) {
+  const selected = MAC_BUILDS[arch];
+  if (!selected) throw new Error(`macOS-Prozessor ${arch} wird nicht unterstuetzt. Bitte die Intel- oder Apple-Silicon-App verwenden.`);
+  return selected;
+}
+
+export async function verifySha256(file, expected) {
+  const hash = createHash('sha256');
+  for await (const chunk of fs.createReadStream(file)) hash.update(chunk);
+  if (hash.digest('hex') !== expected) throw new Error('Die SHA-256-Pruefsumme des FFmpeg-Downloads stimmt nicht. Es wurde nichts installiert. Bitte erneut versuchen.');
+}
+
+export function verifyMachO(file, arch = process.arch) {
+  const header = Buffer.alloc(8);
+  const fd = fs.openSync(file, 'r');
+  try { fs.readSync(fd, header, 0, 8, 0); } finally { fs.closeSync(fd); }
+  const expected = { x64: 0x01000007, arm64: 0x0100000c }[arch];
+  if (!expected || header.readUInt32LE(0) !== 0xfeedfacf || header.readUInt32LE(4) !== expected) {
+    throw new Error(`Der Download enthaelt kein natives macOS-${arch}-Programm. Es wurde nichts installiert.`);
+  }
+}
+
 /** Zielordner: bin/ im Arbeitsverzeichnis. Lebende Bindung, nie einfrieren. */
 function targetBin() {
   return paths.bin;
@@ -57,33 +92,19 @@ function targetBin() {
  * Anleitungen im Klartext
  * ========================================================================== */
 
-/** Anleitung fuer macOS - dort gibt es keinen automatischen Download. */
+/** A fallback users can follow entirely in the graphical app. */
 export function macInstructions() {
   return [
-    'Auf macOS liefert BtbN keine fertigen Programme. ffmpeg muss von Hand kommen:',
+    'Im Programm unter Systemzustand auf "ffmpeg jetzt holen" klicken.',
+    'Die App laedt FFmpeg und FFprobe passend fuer Intel oder Apple Silicon',
+    'von https://ffmpeg.martin-riedl.de/ und prueft SHA-256, Architektur und HAP.',
     '',
-    '  1) Mit Homebrew (empfohlen):',
-    '       brew install ffmpeg',
-    '     Danach ein NEUES Terminal oeffnen, damit der PATH aktuell ist.',
-    '     Wenn Homebrew schon installiert ist, macht Theater-Bild-Gelöte das auf Wunsch selbst:',
-    '       Theater-Bild-Gelöte install-ffmpeg --brew',
-    '     (Nur mit diesem Schalter - von allein wird hier nichts installiert.)',
+    'Falls der Bezug scheitert: Internetverbindung pruefen und erneut versuchen.',
+    'Bei einer macOS-Sperrmeldung den bewusst geladenen Anbieter in',
+    'Systemeinstellungen > Datenschutz & Sicherheit pruefen und freigeben.',
     '',
-    '  2) Ohne Homebrew, Einzeldownloads:',
-    '       https://evermeet.cx/ffmpeg/          (ffmpeg)',
-    '       https://evermeet.cx/ffmpeg/ffprobe/  (ffprobe)',
-    '     Beide entpacken und hierher legen:',
-    `       ${targetBin()}`,
-    '     Danach im Terminal freigeben:',
-    `       chmod 755 "${path.join(targetBin(), 'ffmpeg')}" "${path.join(targetBin(), 'ffprobe')}"`,
-    '     Beim ersten Start meldet sich die Gatekeeper-Warnung - der Weg dorthin ist',
-    '     Systemeinstellungen > Datenschutz & Sicherheit > "Dennoch oeffnen".',
-    '',
-    '  3) Kontrolle:',
-    '       Theater-Bild-Gelöte doctor',
-    '',
-    'Wichtig: Der Build muss die Encoder "hap" und "prores_ks" koennen.',
-    'Die Homebrew-Fassung kann beides.',
+    `Installationsordner: ${targetBin()}`,
+    'Vorhandene Homebrew-Builds werden nur genutzt, wenn die Encoderpruefung gelingt.',
   ].join('\n');
 }
 
@@ -233,6 +254,7 @@ function download(url, dest, { log, onProgress, signal, depth = 0 } = {}) {
 
 function runTool(cmd, args, { log, signal } = {}) {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(new Error('Abgebrochen.')); return; }
     let child;
     try {
       child = spawn(cmd, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -410,6 +432,7 @@ async function verifyEncoders(log) {
   if (!encoders.libx264) {
     log('Achtung: libx264 fehlt - ohne den gibt es keine Proxies und keine Browser-Vorschau.');
   }
+  await runTool(ffmpeg.requireFfprobe(), ['-version']);
   return { version, encoders };
 }
 
@@ -417,25 +440,21 @@ async function verifyEncoders(log) {
  * macOS
  * ========================================================================== */
 
-async function installMac({ log, onProgress, signal, allowBrew }) {
+async function installMac({ log, onProgress, signal, allowBrew, force }) {
   // 1. Liegt schon etwas Brauchbares da oder im PATH?
   ffmpeg.refresh();
   const loc = ffmpeg.locate();
-  if (loc.ffmpeg.found && loc.ffprobe.found) {
+  if (!force && loc.ffmpeg.found && loc.ffprobe.found) {
     log(`ffmpeg gefunden: ${loc.ffmpeg.path} (Quelle: ${loc.ffmpeg.source})`);
-    const { version, encoders } = await verifyEncoders(log);
-    onProgress?.(1);
-    return {
-      ok: true,
-      installed: [loc.ffmpeg.path, loc.ffprobe.path],
-      version,
-      encoders,
-      binDir: targetBin(),
-      root: paths.root,
-      skipped: true,
-      source: loc.ffmpeg.source,
-    };
+    try {
+      const { version, encoders } = await verifyEncoders(log);
+      await runTool(loc.ffprobe.path, ['-version'], { signal });
+      onProgress?.(1);
+      return { ok: true, installed: [loc.ffmpeg.path, loc.ffprobe.path], version, encoders, binDir: targetBin(), root: paths.root, skipped: true, source: loc.ffmpeg.source };
+    } catch (err) { log(`${err.message} Ein passender Build wird geladen.`); }
   }
+
+  if (!allowBrew) return installMacDownload({ log, onProgress, signal });
 
   // 2. Homebrew - nur auf ausdrueckliche Ansage.
   const brew = whichSync('brew');
@@ -484,6 +503,60 @@ async function installMac({ log, onProgress, signal, allowBrew }) {
   };
 }
 
+async function installMacDownload({ log, onProgress, signal }) {
+  const build = macBuild();
+  const staging = fs.mkdtempSync(path.join(ensureDir(paths.cache), 'ffmpeg-mac-'));
+  const staged = {};
+  try {
+    log(`FFmpeg ${build.release} fuer macOS ${process.arch} von Martin Riedl (https://ffmpeg.martin-riedl.de/).`);
+    for (const [index, name] of NEEDED.entries()) {
+      const archive = path.join(staging, `${name}.zip`);
+      const url = `${build.base}${name}.zip`;
+      log(`Lade ${url}`);
+      await download(url, archive, { log, signal, onProgress: p => onProgress?.(index * 0.4 + p * 0.4) });
+      await verifySha256(archive, build.sha256[name]);
+      const dir = path.join(staging, name);
+      await extract(archive, dir, 'zip', { signal, log });
+      const found = findFile(dir, name);
+      if (!found) throw new Error(`${name} fehlt im verifizierten Archiv.`);
+      verifyMachO(found);
+      makeExecutable(found, log);
+      staged[name] = found;
+    }
+    // Run the staged executables before replacing a user's existing pair.
+    let encoderOutput = '';
+    await runTool(staged.ffmpeg, ['-hide_banner', '-encoders'], { signal, log: s => { encoderOutput += s + '\n'; } });
+    for (const codec of ['hap', 'prores_ks', 'libx264']) {
+      if (!new RegExp(`^\\s*[A-Z.]{6}\\s+${codec}\\s`, 'm').test(encoderOutput)) throw new Error(`Der geladene Build unterstuetzt ${codec} nicht. Vorhandene Programme bleiben erhalten.`);
+    }
+    await runTool(staged.ffprobe, ['-version'], { signal });
+    if (signal?.aborted) throw new Error('Abgebrochen.');
+    onProgress?.(0.9);
+    const bin = targetBin();
+    // Back up both old executables so a copy failure cannot leave half a pair.
+    const replaced = [];
+    try {
+      for (const name of NEEDED) {
+        const dest = path.join(bin, name);
+        const backup = path.join(staging, `${name}.previous`);
+        const existed = fs.existsSync(dest);
+        if (existed) fs.copyFileSync(dest, backup);
+        replaced.push({ dest, backup, existed });
+        fs.copyFileSync(staged[name], dest);
+        fs.chmodSync(dest, 0o755);
+      }
+    } catch (err) {
+      for (const item of replaced.reverse()) { if (item.existed) fs.copyFileSync(item.backup, item.dest); else fs.rmSync(item.dest, { force: true }); }
+      throw err;
+    }
+    fs.writeFileSync(path.join(bin, 'ffmpeg-source.json'), JSON.stringify({ provider: 'Martin Riedl', release: build.release, arch: process.arch, source: 'https://git.martin-riedl.de/ffmpeg/build-script', downloads: NEEDED.map(name => ({ url: `${build.base}${name}.zip`, sha256: build.sha256[name] })) }, null, 2));
+    const { version, encoders } = await verifyEncoders(log);
+    onProgress?.(1);
+    return { ok: true, installed: NEEDED.map(name => path.join(bin, name)), version, encoders, binDir: bin, root: paths.root, source: 'martin-riedl' };
+  } catch (err) { throw new Error(`${err.message}\n\n${macInstructions()}`); }
+  finally { rmrf(staging); }
+}
+
 /* ==========================================================================
  * Hauptablauf
  * ========================================================================== */
@@ -519,7 +592,7 @@ export async function installFfmpeg(opts = {}) {
   }
 
   if (process.platform === 'darwin') {
-    return installMac({ log, onProgress, signal, allowBrew });
+    return installMac({ log, onProgress, signal, allowBrew, force });
   }
 
   const src = DOWNLOADS[process.platform];

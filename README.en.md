@@ -1,24 +1,48 @@
 # Theater-Bild-Gelöte
 
-Repository: [jareb560-byte/theater-bild-geloete](https://github.com/jareb560-byte/theater-bild-geloete)
-(private; requires an authorized GitHub account).
+**Place videos on LED walls, preview them on a 3D stage and export the right files.**
+For whole walls and moving panels. Your media stay on your computer.
 
-**[Open the online edition](https://jareb560-byte.github.io/theater-bild-geloete/)** —
-3D stage, panel editor and project planning without installation. Use **Guide** for a quick start.
-The website is public; the source repository remains private. Rendering and quality control
-run in the local application. No npm package has been published.
+**[Start in your browser](https://jareb560-byte.github.io/theater-bild-geloete/)** ·
+[Installation help](docs/INSTALLATION.md) · [Export HAP](#export-hap) ·
+[Deutsch](README.md)
 
-*Deutsche Fassung: [README.md](README.md)*
+| Download desktop app 0.3.0 | For |
+|---|---|
+| **[Windows setup (.exe)](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest/download/Theater-Bild-Geloete-0.3.0-Windows-x64-Setup.exe)** | Windows 10/11, 64 bit |
+| **[Mac with Apple Silicon (.dmg)](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest/download/Theater-Bild-Geloete-0.3.0-macOS-arm64.dmg)** | M1 and newer, macOS 13+ |
+| **[Mac with Intel (.dmg)](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest/download/Theater-Bild-Geloete-0.3.0-macOS-x64.dmg)** | Intel, macOS 13+ |
 
-Anyone feeding an LED wall built from several moving sections faces three problems at once. The
-content has to work closed **and** open, once the sections have travelled apart and gaps stand
-between them. The individual sections need files that match their pixel width exactly, run
-frame-accurately to the same length, and show no brightness step across the seams. And in the end
-the house asks for codecs — HAP, ProRes, MPEG-2 — that no ordinary editing suite writes. That is
-what Theater-Bild-Gelöte is for: it ingests any source material, conforms frame rate and raster, places it on
-wall and panel surfaces, shows in a 3D stage what the result looks like closed and open, renders
-the delivery files and checks them against the venue spec. It runs entirely on your own machine,
-with no cloud, and every ffmpeg call is visible in plain text before it starts.
+Windows: open the setup file and install. Mac: open the DMG and drag the app into **Applications**.
+The installed app does not require Node, Homebrew or Terminal.
+See [installation help](docs/INSTALLATION.md) for first-launch instructions.
+
+## Your stage video in three steps
+
+1. **Add media.** Open **Library** and load your videos or images. Online, use **Add files**
+   or **Add folder**; in the local app, use **Scan folder**.
+2. **Design your wall.** Choose a wall and **Whole wall** or an individual panel, then click
+   **Place**. Choose **Edit in editor** to adjust the crop and position.
+3. **Preview and export.** Check the closed and open positions in **3D stage**.
+   In **Export**, select a wall with content and start with a short section.
+
+**In your browser:** create and download an H.264 MP4 without audio, using Chrome or Edge.
+**In the desktop app:** export HAP, ProRes, MPEG-2 and separate panel files, then run technical QC.
+The **Guide** button in the app explains the workflow. The source is public under the
+[MIT licence](LICENSE).
+
+## Export HAP
+
+1. Install the desktop app and choose **Fetch ffmpeg now** during first-run setup.
+   Choose **Check again** and confirm that the HAP indicator is green. This one-time download needs internet.
+2. Place media on a wall or open an existing project using **··· → Open project file**.
+3. Open **Export**. Select the wall, output folder and HAP preset agreed with the venue.
+   Enable **also individual panels** if needed, choose a short test section and click **Render**.
+4. Check the finished output in **QC** before delivering the full loop.
+
+[HAP and ProRes setup](docs/INSTALLATION.md#rendern-mit-hap-und-prores) ·
+[Full production workflow](docs/WORKFLOW.md) ·
+[Move a browser project to desktop](docs/BROWSER-FASSUNG.md#projekt-sichern-und-lokal-weiterarbeiten)
 
 ## What it is not
 
@@ -33,7 +57,33 @@ delivery formats is Theater-Bild-Gelöte's job. Everything else explicitly is no
 
 ## Installation
 
-With access to the private repository:
+### Create an MP4 online
+
+1. In **Library**, scan your media folder and place the files on wall slots.
+2. Open **Export** and select a wall.
+3. Test a short **Section**, such as 0 to 5 seconds, or choose **Whole loop**.
+4. Click **Create MP4**, keep the tab open, then select **Download MP4**.
+
+Use a current Chrome or Edge that supports the selected wall resolution. The H.264 MP4 contains
+the flat wall at its full pixel resolution, with its active layers and no audio. It uses the project
+state at the time you start. It does not record the 3D stage, panel travel or guides.
+Processing happens on your computer; media are not uploaded and there is no paid rendering service.
+Confirm with the venue whether MP4 is accepted. HAP, ProRes, MPEG-2, separate panel files,
+conforming and technical quality control require the local edition.
+Browser output is limited to 256 MB per video. Image filters and soft transitions are
+rejected with an explanation before export; use the local edition for those projects.
+
+Download a `.tbg.json` backup through **··· → Download project file** beside the project name.
+The project references media; it does not contain them. For a browser project imported from one
+media folder, save its `.tbg.json` in that same folder and retain the subfolders. In the local
+application, choose **··· → Open project file** and select the file in that folder.
+This picker can also open projects outside the workspace's `projects/` directory.
+
+### Local edition
+
+**[Download desktop](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest)**
+for the available Windows and Mac installers. The local edition supports HAP, ProRes
+and MPEG-2 delivery. To develop from source:
 
 ```sh
 git clone https://github.com/jareb560-byte/theater-bild-geloete.git
@@ -95,16 +145,10 @@ npm run setup:ffmpeg
 npm start -- --open
 ```
 
-If the automatic route does not get through, use Homebrew:
-
-```
-brew install ffmpeg
-ffmpeg -hide_banner -encoders | grep hap
-```
-
-If the second command prints no line containing `hap`, that build is unsuitable. Fetch a full
-static build instead and copy its `ffmpeg` and `ffprobe` into `bin/` inside the working folder.
-On Apple Silicon everything runs natively; Rosetta is not needed.
+The automatic download chooses the appropriate Apple Silicon or Intel version, verifies the
+download and checks its encoders. In the installed Mac app, use **Fetch ffmpeg now**;
+Homebrew and Terminal are not required. If the download fails, the job log explains why.
+After successful setup, choose **Check again**.
 
 ### Linux
 

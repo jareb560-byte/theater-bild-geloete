@@ -23,12 +23,14 @@ import {
   t, register, applyStatic, onLangChange, setLang, getLang, LANGUAGES,
 } from './i18n.js';
 import { createVideoPool } from './media/videoPool.js';
-import { createLibraryView } from './ui/library.js';
+import { createLibraryView, pickPath } from './ui/library.js';
 import { createInspector } from './ui/inspector.js';
 import { createJobsBar } from './ui/jobs.js';
 import { createStageControls } from './ui/stageControls.js';
 import { createQuickStart } from './ui/quickStart.js';
+import { createStartPanel } from './ui/startPanel.js';
 import { createRenderView } from './ui/render.js';
+import { createBrowserRenderView } from './ui/browserRender.js';
 import { createQcView } from './ui/qc.js';
 import { createSetupView, ffmpegLevel, ffmpegSummary } from './ui/setup.js';
 import { getWallSpec } from '/shared/model.js';
@@ -36,6 +38,13 @@ import { getWallSpec } from '/shared/model.js';
 /* Woerterbuch dieses Moduls — inklusive der statischen Texte aus index.html,
    denn die gehoeren zum Rahmen und haben kein eigenes Modul. */
 register('en', {
+  'Ganze Wand': 'Whole wall',
+  'Paarweise': 'In pairs',
+  'Einzeln': 'Individually',
+  'Wand öffnen': 'Open wall',
+  'Export': 'Export',
+  'Desktop herunterladen': 'Download desktop',
+  'Desktop für Windows und Mac herunterladen': 'Download desktop for Windows and Mac',
   'Anleitung': 'Guide',
   'Kurzanleitung öffnen': 'Open quick-start guide',
   'Projektdatei öffnen': 'Open project file',
@@ -43,8 +52,10 @@ register('en', {
   'Der aktuelle Stand bleibt nur bis zum nächsten Projektwechsel im Browser. Sichere ihn bei Bedarf vorher als Projektdatei.':
     'The current plan stays in this browser until you switch projects. Download a project file first if you need to keep it.',
   'Projekt geladen. Medienordner bei Bedarf erneut einlesen.': 'Project loaded. Scan the media folder again if needed.',
-  'Browser bereit. Die Lieferdateien entstehen in der Desktop-Fassung.': 'Browser ready. Delivery files are created in the desktop edition.',
-  'Browser · Planung': 'Browser · Planning',
+  'Projekt geladen.': 'Project loaded.',
+  'Bitte eine Projektdatei mit der Endung .tbg.json wählen.': 'Please choose a project file ending in .tbg.json.',
+  'Browser bereit. MP4 unter „Export“ erstellen.': 'Browser ready. Create MP4 in “Export”.',
+  'Browser · MP4': 'Browser · MP4',
   'Wandliste schließen': 'Close wall list',
   'Projekt verwalten': 'Manage project',
   'Projektdatei herunterladen': 'Download project file',
@@ -248,7 +259,7 @@ const pool = createVideoPool({
 const library = createLibraryView();
 const inspector = createInspector();
 const jobsBar = createJobsBar();
-const renderView = createRenderView();
+const renderView = IS_BROWSER ? createBrowserRenderView() : createRenderView();
 const qcView = createQcView();
 const setup = createSetupView();
 
@@ -260,6 +271,16 @@ let clock = 0;           // Zeitleistenposition in Sekunden
 let statusAction = null; // zusaetzlicher Knopf in der Statuszeile
 let helpHandle = null;   // offener Hilfe-Dialog
 const quickStart = createQuickStart({ browser: IS_BROWSER, onView: setView, onShortcuts: openHelp });
+const startPanel = createStartPanel({ onView: setView });
+$('vpStage').appendChild(startPanel.el);
+if (IS_BROWSER) {
+  $('topbar').appendChild(h('a#desktopDownload.btn.sm', {
+    href: 'https://github.com/jareb560-byte/theater-bild-geloete/releases/latest',
+    target: '_blank', rel: 'noopener noreferrer',
+    title: 'Desktop für Windows und Mac herunterladen',
+    'data-i18n-title': true, 'data-i18n': true,
+  }, 'Desktop herunterladen'));
+}
 
 VIEWS.library.appendChild(library.el);
 VIEWS.render.appendChild(renderView.el);
@@ -383,20 +404,30 @@ on($('projectMenu'), 'click', () => modal({
         catch (e) { if (!e.abgebrochen && e.name !== 'AbortError') throw e; }
       } },
       { label: t('Neues Browser-Projekt'), onClick: () => openNewBrowserProject() },
-    ] : [{ label: t('Projekt öffnen oder anlegen'), onClick: () => onboarding?.open() }]),
+    ] : [
+      { label: t('Projektdatei öffnen'), onClick: async () => {
+        if (isDirty() && !(await flushSave())) throw new Error(t('Projekt konnte nicht gespeichert werden'));
+        const path = await pickPath({ title: t('Projektdatei öffnen'), mode: 'file', start: store.get().workspace?.projects || '' });
+        if (!path) return;
+        if (!path.toLowerCase().endsWith('.tbg.json')) throw new Error(t('Bitte eine Projektdatei mit der Endung .tbg.json wählen.'));
+        await useBrowserProject(await openProject(path));
+      } },
+      { label: t('Projekt öffnen oder anlegen'), onClick: () => onboarding?.open() },
+    ]),
   ],
 }));
 
 async function useBrowserProject(project) {
   const venue = await getVenue(project.venueId);
   pool.pause();
+  renderView.resetProject?.();
   clock = 0;
   store.set({
     project, venue, media: project.media || [],
     ui: { activeWallId: venue.walls[0]?.id, activeSlotId: 'master', selectedLayerId: null,
       transport: { playing: false, timeSec: 0, loopSec: project.loopSeconds || 20 } },
   });
-  setStatus(t('Projekt geladen. Medienordner bei Bedarf erneut einlesen.'), 'ok');
+  setStatus(t(IS_BROWSER ? 'Projekt geladen. Medienordner bei Bedarf erneut einlesen.' : 'Projekt geladen.'), 'ok');
 }
 
 function openNewBrowserProject() {
@@ -549,17 +580,17 @@ function buildLeft(state) {
 
     const modeSeg = h('div.seg',
       ...['2+2', '4x'].map((m) => {
-        const b = h('button.btn.sm', { type: 'button', class: wall.travelMode === m ? 'btn sm on' : 'btn sm' }, m);
+        const b = h('button.btn.sm', { type: 'button', title: m, class: wall.travelMode === m ? 'btn sm on' : 'btn sm' }, t(m === '2+2' ? 'Paarweise' : 'Einzeln'));
         on(b, 'click', () => updateWall(wallSpec.id, { travelMode: m }));
         return b;
       }));
 
     const block = h('div.wall', { class: isActive ? 'wall active' : 'wall' },
       title,
-      h('div.row', { style: 'margin-top:3px' }, h('span.dim', { style: 'font-size:11px' }, t('Fahrweg')), travel, travelTxt),
-      h('div.row', modeSeg,
+      isActive ? h('div.row', { style: 'margin-top:3px' }, h('span.dim', { style: 'font-size:11px' }, t('Wand öffnen')), travel, travelTxt) : null,
+      isActive ? h('div.row', modeSeg,
         h('span.dim.right', { style: 'font-size:11px' },
-          wallSpec.note ? '⚠' : '', wallSpec.label ? wallSpec.label.replace(/^.\s*—\s*/, '') : '')));
+          wallSpec.note ? '⚠' : '', wallSpec.label ? wallSpec.label.replace(/^.\s*—\s*/, '') : '')) : null);
     if (wallSpec.note) block.title = wallSpec.note;
     elLeft.appendChild(block);
 
@@ -584,7 +615,7 @@ function buildSlots(state, wallSpec, wall) {
     on(chk, 'change', (ev) => { ev.stopPropagation(); updateSlot(wallSpec.id, slotId, { enabled: chk.checked }); });
 
     const head = h('div.sh', chk,
-      h('b', slotId === 'master' ? 'master' : slotId),
+      h('b', slotId === 'master' ? t('Ganze Wand') : slotId),
       h('span.dim.grow.nowrap', { style: 'font-size:11px' }, `${slot.width}×${slot.height}${slot.x ? ` · x=${slot.x}` : ''}`),
       slot.layers.length ? h('span.tag', String(slot.layers.length)) : null);
     on(head, 'click', ev => { if (ev.target !== chk) store.set({ ui: { activeWallId: wallSpec.id, activeSlotId: slotId, selectedLayerId: null } }); });
@@ -700,7 +731,7 @@ function render(state) {
   // ffmpeg-Ampel
   const lvl = IS_BROWSER ? 'ok' : ffmpegLevel(state.health);
   elFfmpegDot.className = `amp ${lvl}`;
-  elFfmpegTxt.textContent = IS_BROWSER ? t('Browser · Planung') : ffmpegSummary(state.health);
+  elFfmpegTxt.textContent = IS_BROWSER ? t('Browser · MP4') : ffmpegSummary(state.health);
   if (IS_BROWSER) $('ffmpegAmp').title = t('Kurzanleitung öffnen');
   elFfmpegTxt.style.color = lvl === 'err' ? 'var(--err)' : '';
 
@@ -728,7 +759,7 @@ function render(state) {
     }
     if (state.ui.view === 'stage3d' && stage3d) safe(() => stage3d.resize(), 'stage3d.resize');
     if (state.ui.view === 'editor' && panelEditor) safe(() => panelEditor.resize(), 'panelEditor.resize');
-    if (state.ui.view === 'render') renderView.loadPreview();
+    if (state.ui.view === 'render') renderView.loadPreview?.();
     // Der Venue-Editor holt seine Liste selbst — beim Betreten der Ansicht
     // oeffnen, beim Verlassen schliessen (der Entwurf bleibt dabei erhalten).
     if (state.ui.view === 'venue') {
@@ -754,6 +785,7 @@ function render(state) {
   jobsBar.update(state);
   library.update(state);
   renderView.update(state);
+  startPanel.update(state);
   qcView.update(state);
   setup.update(state);
   if (venueEditor) safe(() => venueEditor.update(state), 'venueEditor.update');
@@ -927,8 +959,9 @@ if (typeof ResizeObserver === 'function') {
 }
 
 on(window, 'beforeunload', (ev) => {
-  if (isDirty()) { ev.preventDefault(); ev.returnValue = ''; }
+  if (isDirty() || renderView.busy) { ev.preventDefault(); ev.returnValue = ''; }
 });
+on(window, 'pagehide', (ev) => { if (!ev.persisted) renderView.dispose?.(); });
 
 /* ==========================================================================
  * Jobstream
@@ -1085,7 +1118,7 @@ async function boot() {
     setStatus(t('Server verbunden. ffmpeg fehlt — ohne das kann nichts umgewandelt oder gerendert werden.'), 'err');
     setup.open();
   } else {
-    setStatus(IS_BROWSER ? t('Browser bereit. Die Lieferdateien entstehen in der Desktop-Fassung.') : t('Bereit.'), 'ok');
+    setStatus(IS_BROWSER ? t('Browser bereit. MP4 unter „Export“ erstellen.') : t('Bereit.'), 'ok');
   }
 
   // --- Projekt pruefen

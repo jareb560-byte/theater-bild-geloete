@@ -321,6 +321,35 @@ for (const name of CONTROLS_GEBRAUCHT) {
 }
 note(`three/examples/jsm/controls → vendor/three/addons/controls/  (${nControls} Datei(en): ${CONTROLS_GEBRAUCHT.join(', ')})`);
 
+/* Mediabunny — fertiges Browser-ESM-Bundle, ohne CDN oder Runtime-Imports.
+   MPL-Lizenz und Originalquellen liegen beim ausgelieferten Bundle. */
+
+const mediabunnyRoot = path.join(ROOT, 'node_modules', 'mediabunny');
+const mediabunnyBundle = path.join(mediabunnyRoot, 'dist', 'bundles', 'mediabunny.mjs');
+for (const required of [mediabunnyBundle, path.join(mediabunnyRoot, 'LICENSE'), path.join(mediabunnyRoot, 'src', 'index.ts')]) {
+  if (!fs.existsSync(required)) {
+    fail(`mediabunny ist unvollstaendig installiert — ${required} fehlt.`, 'Bitte npm ci ausfuehren und erneut bauen.');
+  }
+}
+const mediabunnyPackage = JSON.parse(fs.readFileSync(path.join(mediabunnyRoot, 'package.json'), 'utf8'));
+copyFile(mediabunnyBundle, path.join(OUT, 'vendor', 'mediabunny.mjs'));
+copyFile(path.join(mediabunnyRoot, 'LICENSE'), path.join(OUT, 'vendor', 'mediabunny.LICENSE'));
+const mediabunnySource = path.join(OUT, 'vendor', 'mediabunny-source');
+copyTree(path.join(mediabunnyRoot, 'src'), path.join(mediabunnySource, 'src'));
+copyFile(path.join(mediabunnyRoot, 'package.json'), path.join(mediabunnySource, 'package.json'));
+const sourceFiles = walk(mediabunnySource).map((file) => path.relative(mediabunnySource, file).split(path.sep).join('/'));
+fs.writeFileSync(path.join(mediabunnySource, 'index.json'), `${JSON.stringify({
+  name: 'mediabunny', version: mediabunnyPackage.version, license: 'MPL-2.0',
+  licenseFile: '../mediabunny.LICENSE', files: sourceFiles,
+}, null, 2)}\n`, 'utf8');
+fs.writeFileSync(path.join(OUT, 'vendor', 'mediabunny.NOTICE.txt'),
+  `Mediabunny ${mediabunnyPackage.version}\nCopyright (c) Vanilagy and contributors\n` +
+  'Distributed under the Mozilla Public License 2.0; see mediabunny.LICENSE.\n' +
+  'The browser bundle and original TypeScript sources are unmodified.\n' +
+  'Source file listing: mediabunny-source/index.json (paths relative to that directory).\n' +
+  'Upstream: https://github.com/Vanilagy/mediabunny\n', 'utf8');
+note(`mediabunny ${mediabunnyPackage.version} → vendor/mediabunny.mjs, Lizenz und Originalquellen (kein CDN)`);
+
 /* server/ops/filtergraph.js — nur wenn es ohne node:-Importe auskommt.
    Es haengt allein an shared/model.js und ist damit browsertauglich; die
    Render-Ansicht zeigt den Filtergraph im Klartext, ohne ffmpeg zu starten. */
@@ -403,6 +432,18 @@ html = html.replace(/(["'])\/vendor\//g, '$1./vendor/');
 if (html === beforeMap) warn('In index.html wurde kein "/vendor/…" gefunden — stimmt die import map noch?');
 else note('import map: "three" → ./vendor/three.module.js, "three/addons/" → ./vendor/three/addons/');
 
+const importMapPattern = /(<script\b[^>]*\btype=["']importmap["'][^>]*>)([\s\S]*?)(<\/script>)/i;
+if (importMapPattern.test(html)) {
+  html = html.replace(importMapPattern, (whole, opening, json, closing) => {
+    const map = JSON.parse(json);
+    map.imports = { ...(map.imports || {}), mediabunny: './vendor/mediabunny.mjs' };
+    return `${opening}\n${JSON.stringify(map, null, 2)}\n${closing}`;
+  });
+  note('import map: "mediabunny" → ./vendor/mediabunny.mjs (lokales Browser-Bundle)');
+} else {
+  warn('Keine import map gefunden — der Browser-MP4-Export kann mediabunny nicht laden.');
+}
+
 // Das Modul-Skript selbst ist ebenfalls absolut verlinkt (src="/src/main.js")
 // und wuerde unter einem Unterpfad nicht laden.
 const beforeEntry = html;
@@ -443,15 +484,15 @@ if (firstModule >= 0) {
 
 /* d) Hinweisband ueber der Kopfzeile */
 
-const linkMarkup = '<span class="tbgHintLink dim">Export: Desktop-Fassung auf dem eigenen Rechner</span>';
+const linkMarkup = '<span class="tbgHintLink dim">HAP / ProRes: Desktop-Fassung auf dem eigenen Rechner</span>';
 
 const hintMarkup = `
   <!-- ====================================================== Hinweisband -->
   <!-- Vom Bauskript eingesetzt (tools/build-web.js). Sagt einmal ruhig, was
        diese Fassung kann und was nicht, und laesst sich dauerhaft wegklicken. -->
   <div id="tbgHint" role="note">
-    <span class="tbgHintTxt">Browser-Fassung — zum Planen und Zeigen.
-      Rendern und Ausliefern brauchen ffmpeg auf dem eigenen Rechner.
+    <span class="tbgHintTxt">Browser-Fassung — planen und als MP4 exportieren.
+      Verarbeitung auf deinem Rechner, ohne Server-Upload.
       Raumgeometrie und Fahrwege der Vorlagen enthalten Annahmen; kein bestätigtes Hausaufmaß.</span>
     ${linkMarkup}
     <button id="tbgHintClose" class="tbgHintClose" type="button"
@@ -478,12 +519,12 @@ const hintMarkup = `
 if (/<header\b[^>]*\bid=["']topbar["']/i.test(html)) {
   html = html.replace(/(\n?[ \t]*)(<!--[^>]*-->\s*)?(<header\b[^>]*\bid=["']topbar["'])/i,
     (whole, indent, comment, header) => `${hintMarkup}\n${indent || '\n  '}${comment || ''}${header}`);
-  note('Hinweisband mit Desktop- und Annahmen-Hinweis eingesetzt; kein Link auf private Releases');
+  note('Hinweisband mit lokalem MP4-Export und Desktop-Lieferformaten eingesetzt');
 } else {
   warn('Kopfzeile #topbar nicht gefunden — das Hinweisband wurde nicht eingesetzt.');
 }
 
-/* e) CSS: Band gestalten, Render- und QC-Knopf ausblenden.
+/* e) CSS: Band gestalten, nur den technischen QC-Knopf ausblenden.
       Die Ansichten selbst bleiben im HTML — so bleibt eine Datei fuer beide
       Betriebsarten, und die Desktop-Fassung sieht davon nichts, weil alle
       Regeln an data-mode="browser" haengen. */
@@ -515,16 +556,15 @@ html[data-mode="browser"].tbg-hint-off #tbgHint{display:none}
 }
 #tbgHint .tbgHintClose:hover{color:var(--fg);border-color:var(--ln)}
 
-/* Render und QC brauchen ffmpeg. Die Ansichten bleiben im HTML stehen, nur
-   ihre Knoepfe verschwinden — so gibt es keine toten Wege in der Oberflaeche. */
-html[data-mode="browser"] #viewSwitch [data-view="render"],
+/* MP4-Export ist im Browser verfuegbar. Die technische QC braucht weiterhin
+   ffmpeg und bleibt ausschliesslich in der Desktop-Fassung sichtbar. */
 html[data-mode="browser"] #viewSwitch [data-view="qc"]{display:none}
 `;
 
 const styleEnd = html.lastIndexOf('</style>');
 if (styleEnd >= 0) {
   html = html.slice(0, styleEnd) + extraCss + html.slice(styleEnd);
-  note('CSS ergaenzt: Hinweisband, Render- und QC-Knopf ausgeblendet');
+  note('CSS ergaenzt: Hinweisband, Browser-Render sichtbar, nur QC ausgeblendet');
 } else {
   warn('Kein </style> in index.html gefunden — das CSS der Browser-Fassung fehlt.');
 }
@@ -602,17 +642,19 @@ WAS HIER GEHT
   * Panels von Hand fahren
   * Vorschau von Videos, die der Browser selbst abspielen kann
     (H.264/MP4, WebM). HAP, ProRes und MPEG-2 kann er nicht.
+  * MP4-/H.264-Export direkt auf dem eigenen Rechner, sofern der Browser
+    einen geeigneten Encoder bereitstellt. Medien werden nicht hochgeladen.
 
 
 WAS HIER NICHT GEHT
 -------------------
-Rendern, Conform, Proxies, technische QC und das Erzeugen einzelner
-Paneldateien sind in dieser Fassung nicht enthalten. Diese Funktionen
-benutzen ffmpeg in der lokalen Anwendung; auf GitHub Pages gibt es
-keinen Renderdienst.
+HAP-/ProRes-/MPEG-2-Lieferdateien, Conform, Proxies und technische QC
+benutzen weiterhin ffmpeg in der lokalen Desktop-Anwendung. Auf GitHub
+Pages gibt es keinen Renderdienst: auch MP4 wird im eigenen Browser
+berechnet, nicht auf einem Server.
 
-Die Browser-Fassung ist zum PLANEN und ZEIGEN da. Fuer das Ausliefern muss
-die Desktop-Fassung mit ffmpeg auf dem eigenen Rechner vorhanden sein.
+Fuer Hausformate wie HAP oder ProRes muss die Desktop-Fassung mit ffmpeg
+auf dem eigenen Rechner vorhanden sein. Der Browser liefert MP4/H.264.
 Diese oeffentliche Seite bietet keinen Desktop-Download an.
 
 Die Venue-Vorlagen enthalten Annahmen zu Raumgeometrie und Fahrwegen.
@@ -648,9 +690,18 @@ ORDNER
   src/                  der Programmcode (api.js ist hier die Browser-Fassung)
   shared/model.js       das gemeinsame Datenmodell
   config/venues/        mitgelieferte Häuser, dazu index.json als Verzeichnis
-  vendor/               three.js und OrbitControls
+  vendor/               three.js, OrbitControls und mediabunny samt Lizenz
   404.html              Rückweg zur Startseite
   .nojekyll             siehe oben
+
+MEDIABUNNY
+----------
+Der MP4-Export verwendet Mediabunny ${mediabunnyPackage.version} (MPL-2.0).
+Lizenz: vendor/mediabunny.LICENSE
+Herkunft: vendor/mediabunny.NOTICE.txt
+Unveraenderte Originalquellen: vendor/mediabunny-source/index.json listet
+alle Quelldateien auf. Diese Drittbibliothek wird lokal mitgeliefert und
+braucht keinen CDN-Zugriff.
 `;
 fs.writeFileSync(path.join(OUT, 'LIESMICH.txt'), liesmich, 'utf8');
 note('LIESMICH.txt');

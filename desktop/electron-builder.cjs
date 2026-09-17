@@ -1,0 +1,27 @@
+// Only program code and the public venue templates enter installers. User media,
+// local FFmpeg executables, PDFs, caches and workspaces never enter the package.
+module.exports = {
+  appId: 'de.theater-bild-geloete.studio',
+  productName: 'Theater-Bild-Geloete',
+  copyright: 'Copyright © Theater-Bild-Gelöte contributors',
+  directories: { output: 'dist/desktop', buildResources: '.cache/desktop-icons' },
+  asar: true,
+  npmRebuild: false,
+  files: [
+    'desktop/main.cjs', 'desktop/local-server.cjs', 'desktop/INSTALLATION.md',
+    'server/**/*.js', 'shared/**/*.js', 'client/index.html',
+    'client/src/**/*.js', 'client/src/**/*.css',
+    'config/venues/mein-schiff-theater.json', 'config/venues/weitere-venues.json',
+    'package.json', 'LICENSE',
+    '!node_modules/mediabunny/**',
+    '!node_modules/three/{src,examples,build}/**',
+    'node_modules/three/build/three.module.js',
+    'node_modules/three/examples/jsm/controls/OrbitControls.js',
+    'node_modules/three/LICENSE',
+  ],
+  win: { target: [{ target: 'nsis', arch: ['x64'] }], icon: '.cache/desktop-icons/icon.png', artifactName: 'Theater-Bild-Geloete-${version}-Windows-x64-Setup.${ext}' },
+  nsis: { oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true, createDesktopShortcut: true, createStartMenuShortcut: true, runAfterFinish: true, deleteAppDataOnUninstall: false },
+  mac: { target: [{ target: 'dmg', arch: ['arm64', 'x64'] }], icon: '.cache/desktop-icons/icon.png', category: 'public.app-category.video', minimumSystemVersion: '13.0', identity: null, artifactName: 'Theater-Bild-Geloete-${version}-macOS-${arch}.${ext}' },
+  dmg: { title: 'Theater-Bild-Geloete ${version}', sign: false },
+  publish: null,
+};

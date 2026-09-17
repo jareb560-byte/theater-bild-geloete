@@ -41,6 +41,23 @@ async function loadClient(relativeFile, options = {}) {
   }
 }
 
+test('moving a layer to another wall master uses the explicitly selected wall', async () => {
+  const { module: state } = await loadClient('../client/src/store.js', { putProject: async () => ({}) });
+  const layer = { id: 'layer-1', mediaId: 'media-1', transform: { fit: 'cover' } };
+  state.store.set({ project: { media: [], walls: {
+    A: { slots: { master: { width: 100, height: 200, layers: [layer] } } },
+    D: { slots: { master: { width: 300, height: 200, layers: [] } } },
+  } } });
+  state.moveLayer('layer-1', 'master', 'D');
+  const moved = state.store.get();
+  assert.equal(moved.project.walls.A.slots.master.layers.length, 0);
+  assert.equal(moved.project.walls.D.slots.master.layers[0].id, 'layer-1');
+  assert.equal(moved.ui.activeWallId, 'D');
+  assert.equal(moved.ui.activeSlotId, 'master');
+  state.moveLayer('layer-1', 'master', 'missing-wall');
+  assert.equal(state.store.get().project.walls.D.slots.master.layers.length, 1, 'invalid target leaves the layer intact');
+});
+
 test('flushSave waits for the in-flight request and saves edits made while it was pending', async () => {
   const requests = [];
   const { module: state } = await loadClient('../client/src/store.js', {

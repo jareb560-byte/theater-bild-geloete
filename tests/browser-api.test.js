@@ -78,6 +78,8 @@ test('reselecting a desktop project image preserves its layer ID and source path
   assert.equal(result.media[0].id, 'desktop-original');
   assert.equal(result.media[0].absPath, 'D:/Show/visuals/scene.png');
   assert.ok(api.proxyUrl('desktop-original').startsWith('blob:'));
+  assert.equal(api.getBrowserMediaFile('desktop-original'), fixture.selected[0]);
+  assert.equal(api.getBrowserMediaFile('not-selected'), null);
   await api.putProject({ ...project, media: result.media });
   const restored = await api.getProject();
   assert.equal(restored.walls.D.slots.master.layers[0].mediaId, restored.media[0].id);

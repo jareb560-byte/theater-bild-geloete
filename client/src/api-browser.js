@@ -18,11 +18,9 @@
  *
  * WAS SIE NICHT KANN — und das wird ehrlich gesagt, nicht still geschluckt
  * ---------------------------------------------------------------------------
- *   Rendern, Conform, Proxies, QC, Panels schneiden, ffmpeg installieren.
- *   Alles davon braucht ffmpeg. ffmpeg als WebAssembly bringt keinen
- *   hap-Encoder mit, ist rund zehnmal langsamer und stoesst bei 32 Bit an eine
- *   Speicherdecke von rund 2 GB. Ein 2-Minuten-Loop auf Wand D hat 3600
- *   Frames — das ist im Browser nicht zu machen.
+ *   HAP/ProRes-Lieferdateien, Conform, Proxies, QC, ffmpeg installieren.
+ *   Diese Funktionen brauchen die Desktop-Fassung. MP4-Wandexport laeuft
+ *   separat in export/browserMp4.js mit WebCodecs auf dem eigenen Rechner.
  *
  *   Diese Vorgaenge werfen einen Fehler mit name === 'NichtVerfuegbar' und
  *   err.nichtVerfuegbar === true, damit die Oberflaeche sie erkennen und
@@ -1268,6 +1266,10 @@ const BILD_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'avif']);
 
 /** File-Objekte der Bibliothek. Sie leben nur, solange die Seite offen ist. */
 const dateien = new Map();      // mediaId -> File
+
+/** Only explicitly selected local files can be used by the browser exporter. */
+export function getBrowserMediaFile(id) { return dateien.get(id) || null; }
+
 const blobUrls = new Map();     // mediaId -> blob:-URL (einmal erzeugt, gemerkt)
 const thumbUrls = new Map();    // mediaId -> DataURL
 const thumbLaeuft = new Set();  // mediaId, deren Standbild gerade entsteht

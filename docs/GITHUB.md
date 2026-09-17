@@ -1,5 +1,12 @@
 # Versionsverwaltung: Rezept ja, Ergebnis nein
 
+Die Anwendung selbst ist seit dem 17. September 2026 öffentlich:
+[Quellcode](https://github.com/jareb560-byte/theater-bild-geloete),
+[Online-Studio](https://jareb560-byte.github.io/theater-bild-geloete/) und
+[Downloads](https://github.com/jareb560-byte/theater-bild-geloete/releases/latest).
+Die folgenden Empfehlungen für private Repositories beziehen sich auf eigene Kundenprojekte.
+Bildmaterial, Videos und der ursprüngliche PDF-Guide werden nicht mit der Anwendung veröffentlicht.
+
 Für ein Theater-Bild-Gelöte-Projekt gilt eine einzige Regel, und alles Weitere folgt daraus:
 
 > **In das Repository kommt, was die Show beschreibt. Nicht, was die Show ausspielt.**
@@ -217,7 +224,7 @@ Lohnt sich, wenn ohnehin ein NAS mit Containern läuft und mehrere Projekte davo
 arbeitet und die Konten existieren. Die Repository-Grenzen sind ähnlich streng, an der
 entscheidenden Stelle gewinnt man also nichts.
 
-**Empfehlung:** ein privates Repository für den Quelltext samt Venue- und Projektdateien, Video
+**Empfehlung für Kundenprojekte:** ein privates Repository für eigene Venue- und Projektdateien, Video
 vollständig außerhalb auf lokaler Platte plus Backup. Kein LFS. Das ist die einzige Kombination
 ohne laufende Kosten, ohne Wartung, mit reproduzierbaren Renders und ohne die Möglichkeit, sich das
 Repository dauerhaft zu ruinieren.

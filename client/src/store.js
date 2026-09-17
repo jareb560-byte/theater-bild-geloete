@@ -333,12 +333,14 @@ export function removeLayer(layerId) {
  * gesucht, sonst in allen anderen Waenden — "master" gibt es schliesslich
  * auf jeder Wand.
  */
-export function moveLayer(layerId, toSlotId) {
+export function moveLayer(layerId, toSlotId, toWallId = null) {
   const loc = layerLocation(state, layerId);
   if (!loc) { setStatus(t('Layer {id} wurde nicht gefunden.', { id: layerId }), 'warn'); return; }
 
   let targetWallId = null;
-  if (state.project.walls[loc.wallId]?.slots?.[toSlotId]) targetWallId = loc.wallId;
+  if (toWallId != null) {
+    if (state.project.walls[toWallId]?.slots?.[toSlotId]) targetWallId = toWallId;
+  } else if (state.project.walls[loc.wallId]?.slots?.[toSlotId]) targetWallId = loc.wallId;
   else {
     for (const [wid, w] of Object.entries(state.project.walls)) {
       if (w.slots?.[toSlotId]) { targetWallId = wid; break; }

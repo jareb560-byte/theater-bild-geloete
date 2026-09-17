@@ -39,6 +39,23 @@ import { t, register, fmtNum, fmtMeters, onLangChange } from '../i18n.js';
  */
 
 register('en', {
+  'Zuschneiden  [C]': 'Crop  [C]',
+  'Fläche füllen': 'Fill area',
+  'Ganzes Bild': 'Entire image',
+  'Strecken': 'Stretch',
+  'Frei platzieren': 'Place freely',
+  'Bild anklicken zum Auswählen. Rechtsklick für weitere Bildaktionen.': 'Click an image to select it. Right-click for more image actions.',
+  'Bild ziehen: verschieben · Griffe ziehen: Größe ändern · Umschalt: Proportionen halten': 'Drag image: move · Drag handles: resize · Shift: keep proportions',
+  'Hellen Rahmen ziehen: Ausschnitt ändern · P: zurück zum Platzieren': 'Drag the bright frame: change crop · P: back to placing',
+  'Mausrad: Ansicht zoomen · Leertaste + Ziehen: Ansicht bewegen · F: ganze Wand': 'Mouse wheel: zoom view · Space + drag: pan view · F: show whole wall',
+  'Ziehen: verschieben · Griffe: Größe · Umschalt: proportional': 'Drag: move · Handles: resize · Shift: keep proportions',
+  'Mausrad: Zoom · Leertaste: Ansicht bewegen · F: ganze Wand': 'Wheel: zoom · Space: pan view · F: whole wall',
+  '{fit} · Ziel {w} × {h} px · {scale}': '{fit} · Target {w} × {h} px · {scale}',
+  'ganze Fläche': 'entire area',
+  'Mittelnaht: Bildaufteilung beim Auffahren prüfen.': 'Centre seam: check image composition as the wall opens.',
+  'Außenrand {n} %: Gestaltungshilfe, keine technische Sperrzone.': 'Outer margin {n}%: composition guide, not a technical exclusion zone.',
+  'Bild füllt die Fläche {slot}. Überstehende Ränder werden abgeschnitten.': 'Image fills area {slot}. Edges outside it are cropped.',
+  'Ausschnitt zurücksetzen': 'Reset crop',
   // Aufbau und Fehler
   'panelEditor: kein Canvas uebergeben.': 'panelEditor: no canvas given.',
   'panelEditor: kein videoPool uebergeben.': 'panelEditor: no videoPool given.',
@@ -187,6 +204,8 @@ const BLEND_MAP = {
   screen: 'screen',
   multiply: 'multiply',
 };
+
+const FIT_LABELS = { cover: 'Fläche füllen', contain: 'Ganzes Bild', stretch: 'Strecken', native: 'Originalgröße', manual: 'Frei platzieren' };
 
 /* ==========================================================================
  * Kleine Helfer
@@ -458,9 +477,12 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
     const src = sourceSize(layer);
     const crop = cropRect(layer, src);
 
+    const rotation = ((num(t.rotate) % 360) + 360) % 360;
+    const orientedCrop = rotation === 90 || rotation === 270 ? { ...crop, w: crop.h, h: crop.w } : crop;
     let d = t.dest;
-    const destLeer = !d || !(num(d.w, 0) > 0) || !(num(d.h, 0) > 0);
-    if (destLeer) d = fitRect(slot, t.fit || 'cover', crop);
+    // Stored dest is only authoritative for manual placement, like the export.
+    const derivedDest = t.fit !== 'manual' || !d || !(num(d.w, 0) > 0) || !(num(d.h, 0) > 0);
+    if (derivedDest) d = fitRect(slot, t.fit || 'cover', orientedCrop);
 
     const off = t.offset || { x: 0, y: 0 };
     const zoom = num(t.zoom, 1) || 1;
@@ -475,11 +497,11 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
       crop,
       // WANDPIXEL:
       dest: { x: slot.x + cx - w / 2, y: cy - h / 2, w, h },
-      rotate: ((num(t.rotate) % 360) + 360) % 360,
+      rotate: rotation,
       flipH: !!t.flipH,
       flipV: !!t.flipV,
       fit: t.fit || 'cover',
-      destWasEmpty: destLeer,
+      destWasEmpty: derivedDest,
     };
   }
 
@@ -520,7 +542,7 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
     if (!spec || cssW <= 0 || cssH <= 0) return;
     const padX = 40;
     const padTop = 92;      // Platz fuer Infozeile und Modusschalter
-    const padBottom = 74;   // Platz fuer das Lineal
+    const padBottom = cssH >= 360 ? 110 : 74; // Ruler and short direct-manipulation hint.
     const availW = Math.max(40, cssW - padX * 2);
     const availH = Math.max(40, cssH - padTop - padBottom);
     view.scale = Math.min(availW / spec.width, availH / spec.height);
@@ -632,6 +654,7 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
     if (state.ui?.overlays?.ruler !== false) drawRuler(spec, wallScreen);
     drawModeSwitch();
     drawInfo(spec);
+    drawInteractionHint();
     if (menu) drawMenu();
   }
 
@@ -752,8 +775,8 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
       ctx.globalAlpha = clamp(num(filters.opacity, 1), 0, 1);
       ctx.globalCompositeOperation = BLEND_MAP[layer.blend] || 'source-over';
       ctx.translate(dst.x + dst.w / 2, dst.y + dst.h / 2);
-      if (geom.rotate) ctx.rotate((geom.rotate * Math.PI) / 180);
       ctx.scale(geom.flipH ? -1 : 1, geom.flipV ? -1 : 1);
+      if (geom.rotate) ctx.rotate((geom.rotate * Math.PI) / 180);
 
       const src = geom.crop;
       try {
@@ -1148,7 +1171,7 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
   function drawModeSwitch() {
     const items = [
       { id: 'place', label: t('Platzieren  [P]') },
-      { id: 'crop', label: t('Croppen  [C]') },
+      { id: 'crop', label: t('Zuschneiden  [C]') },
     ];
     ctx.save();
     ctx.font = '12px system-ui, "Segoe UI", sans-serif';
@@ -1182,6 +1205,35 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
 
   /* --- Infozeile -------------------------------------------------------- */
 
+  function clippedText(text, width) {
+    if (ctx.measureText(text).width <= width) return text;
+    let shortened = text;
+    while (shortened.length > 1 && ctx.measureText(`${shortened}…`).width > width) shortened = shortened.slice(0, -1);
+    return `${shortened}…`;
+  }
+
+  function drawInteractionHint() {
+    if (cssH < 360 || cssW < 280) return;
+    const compact = cssW < 650;
+    const line1 = mode === 'crop'
+      ? t('Hellen Rahmen ziehen: Ausschnitt ändern · P: zurück zum Platzieren')
+      : t(compact ? 'Ziehen: verschieben · Griffe: Größe · Umschalt: proportional' : 'Bild ziehen: verschieben · Griffe ziehen: Größe ändern · Umschalt: Proportionen halten');
+    const line2 = t(compact ? 'Mausrad: Zoom · Leertaste: Ansicht bewegen · F: ganze Wand' : 'Mausrad: Ansicht zoomen · Leertaste + Ziehen: Ansicht bewegen · F: ganze Wand');
+    ctx.save();
+    ctx.font = '11px system-ui, "Segoe UI", sans-serif';
+    const width = Math.min(cssW - 24, Math.max(ctx.measureText(line1).width, ctx.measureText(line2).width) + 24);
+    const left = (cssW - width) / 2;
+    ctx.fillStyle = COL.chip;
+    roundRectPath(ctx, left, cssH - 46, width, 38, 7);
+    ctx.fill();
+    ctx.fillStyle = COL.textDim;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(clippedText(line1, width - 18), cssW / 2, cssH - 30);
+    ctx.fillText(clippedText(line2, width - 18), cssW / 2, cssH - 15);
+    ctx.restore();
+  }
+
   function drawInfo(spec) {
     const lines = [];
     const warnLines = [];
@@ -1189,7 +1241,7 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
     const sel = selectedContext();
     if (!sel) {
       lines.push({
-        t: t('Kein Layer gewaehlt — Klick auf ein Bild waehlt es aus. Rechtsklick oeffnet das Menue.'),
+        t: t('Bild anklicken zum Auswählen. Rechtsklick für weitere Bildaktionen.'),
         c: COL.textDim,
       });
     } else {
@@ -1202,48 +1254,27 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
         t: t('{label}{name}   —   Slot {slot} auf Wand {wall}{off}', {
           label,
           name,
-          slot: slot.id,
+          slot: slot.id === 'master' ? t('ganze Fläche') : slot.id,
           wall: spec.id,
           off: layer.enabled === false ? t('   (Layer ist abgeschaltet)') : '',
         }),
         c: COL.text,
       });
 
-      const srcTxt = geom.src.w > 0
-        ? t('{w} × {h} px', { w: fmtNum(geom.src.w, 0), h: fmtNum(geom.src.h, 0) })
-        : t('unbekannt (noch nicht geprobt)');
-      const cropTxt = geom.crop.full
-        ? t('ganze Quelle')
-        : t('x {x} · y {y} · {w} × {h} px', {
-          x: fmtNum(geom.crop.x, 0), y: fmtNum(geom.crop.y, 0),
-          w: fmtNum(geom.crop.w, 0), h: fmtNum(geom.crop.h, 0),
-        });
-      const dTxt = t('x {x} · y {y} · {w} × {h} px (Wand)', {
-        x: fmtNum(geom.dest.x, 0), y: fmtNum(geom.dest.y, 0),
-        w: fmtNum(geom.dest.w, 0), h: fmtNum(geom.dest.h, 0),
-      });
-
-      lines.push({
-        t: t('Quelle {src}    Ausschnitt {crop}    Ziel {dest}    fit {fit}{note}', {
-          src: srcTxt,
-          crop: cropTxt,
-          dest: dTxt,
-          // fit ist ein Modellwert ('cover', 'contain', ...) und bleibt unuebersetzt.
-          fit: geom.fit,
-          note: geom.destWasEmpty ? t(' (dest noch aus fit gerechnet)') : '',
-        }),
-        c: COL.textDim,
-      });
-
-      const sx = geom.crop.w > 0 ? (geom.dest.w / geom.crop.w) * 100 : 0;
-      const sy = geom.crop.h > 0 ? (geom.dest.h / geom.crop.h) * 100 : 0;
+      const quarterTurn = geom.rotate === 90 || geom.rotate === 270;
+      const sourceW = quarterTurn ? geom.crop.h : geom.crop.w;
+      const sourceH = quarterTurn ? geom.crop.w : geom.crop.h;
+      const sx = sourceW > 0 ? (geom.dest.w / sourceW) * 100 : 0;
+      const sy = sourceH > 0 ? (geom.dest.h / sourceH) * 100 : 0;
       const scaleTxt = Math.abs(sx - sy) > 0.5
         ? t('Skalierung {x} % / {y} % (nicht proportional)', {
           x: fmtNum(sx, 0), y: fmtNum(sy, 0),
         })
         : t('Skalierung {x} %', { x: fmtNum(sx, 0) });
       const upscale = Math.max(sx, sy);
-      lines.push({ t: scaleTxt, c: upscale > 100.5 ? COL.warn : COL.textDim });
+      lines.push({ t: t('{fit} · Ziel {w} × {h} px · {scale}', {
+        fit: t(FIT_LABELS[geom.fit] || 'Fläche füllen'), w: Math.round(geom.dest.w), h: Math.round(geom.dest.h), scale: scaleTxt,
+      }), c: COL.textDim });
 
       if (upscale > 100.5) {
         warnLines.push({
@@ -1257,8 +1288,8 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
       const seam = num(spec.centerSeamX, spec.width / 2);
       if (geom.dest.x < seam - 0.5 && geom.dest.x + geom.dest.w > seam + 0.5) {
         warnLines.push({
-          t: t('Motiv liegt auf der Mittelnaht — reißt beim Auffahren.'),
-          c: COL.danger,
+          t: t('Mittelnaht: Bildaufteilung beim Auffahren prüfen.'),
+          c: COL.textDim,
         });
       }
 
@@ -1267,12 +1298,12 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
         x: spec.width * safe, y: spec.height * safe,
         w: spec.width * (1 - 2 * safe), h: spec.height * (1 - 2 * safe),
       };
-      if (geom.dest.x < inner.x - 0.5 || geom.dest.y < inner.y - 0.5 ||
+      if (state.ui?.overlays?.safeArea && (geom.dest.x < inner.x - 0.5 || geom.dest.y < inner.y - 0.5 ||
           geom.dest.x + geom.dest.w > inner.x + inner.w + 0.5 ||
-          geom.dest.y + geom.dest.h > inner.y + inner.h + 0.5) {
+          geom.dest.y + geom.dest.h > inner.y + inner.h + 0.5)) {
         warnLines.push({
-          t: t('Layer ragt in die äußeren {n} % (Sperrzone).', { n: fmtNum(safe * 100, 0) }),
-          c: COL.warn,
+          t: t('Außenrand {n} %: Gestaltungshilfe, keine technische Sperrzone.', { n: fmtNum(safe * 100, 0) }),
+          c: COL.textDim,
         });
       }
     }
@@ -1290,7 +1321,8 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
     ctx.textBaseline = 'alphabetic';
     let maxW = 0;
     for (const l of all) maxW = Math.max(maxW, ctx.measureText(l.t).width);
-    const boxW = Math.max(160, Math.min(maxW + 20, cssW - 220));
+    const modeStart = hitModeButtons[0]?.x ?? cssW;
+    const boxW = Math.max(100, Math.min(maxW + 20, modeStart - 24));
     const boxH = all.length * 17 + 14;
     ctx.fillStyle = COL.chip;
     roundRectPath(ctx, 12, 12, boxW, boxH, 6);
@@ -1305,7 +1337,7 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
     ctx.clip();
     for (const l of all) {
       ctx.fillStyle = l.c;
-      ctx.fillText(l.t, 22, y);
+      ctx.fillText(clippedText(l.t, boxW - 20), 22, y);
       y += 17;
     }
     ctx.restore();
@@ -1833,7 +1865,7 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
         { id: 'native', label: t('Originalgröße') },
         { id: 'centerH', label: t('Horizontal zentrieren') },
         { id: 'centerV', label: t('Vertikal zentrieren') },
-        { id: 'resetCrop', label: t('Crop zurücksetzen') },
+        { id: 'resetCrop', label: t('Ausschnitt zurücksetzen') },
         {
           id: 'remove',
           label: t('Layer entfernen'),
@@ -1870,7 +1902,7 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
           offset: { x: 0, y: 0 },
           zoom: 1,
         });
-        setNotice(t('Layer auf Slot {slot} eingepasst (cover).', { slot: slot.id }), 2500);
+        setNotice(t('Bild füllt die Fläche {slot}. Überstehende Ränder werden abgeschnitten.', { slot: slot.id }), 2500);
         break;
       }
       case 'fitWall': {
@@ -1888,14 +1920,17 @@ export function createPanelEditor({ canvas, videoPool, onChange, onSelect, onRem
           setNotice(t('Quellauflösung unbekannt — erst Bibliothek einlesen.'), 4000);
           break;
         }
+        const quarterTurn = geom.rotate === 90 || geom.rotate === 270;
+        const w = quarterTurn ? crop.h : crop.w;
+        const h = quarterTurn ? crop.w : crop.h;
         const rect = {
-          x: slot.x + (slot.width - crop.w) / 2,
-          y: (slot.height - crop.h) / 2,
-          w: crop.w, h: crop.h,
+          x: slot.x + (slot.width - w) / 2,
+          y: (slot.height - h) / 2,
+          w, h,
         };
         emitNow(layer.id, destPatch(slot, rect));
         setNotice(t('Originalgröße: {w} × {h} px.', {
-          w: fmtNum(crop.w, 0), h: fmtNum(crop.h, 0),
+          w: fmtNum(w, 0), h: fmtNum(h, 0),
         }), 2500);
         break;
       }
